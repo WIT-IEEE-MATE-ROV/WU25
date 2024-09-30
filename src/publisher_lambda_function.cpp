@@ -18,6 +18,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
+#include <wiringPi.h>
 
 using namespace std::chrono_literals;
 
@@ -31,6 +32,9 @@ public:
   MinimalPublisher()
   : Node("minimal_publisher"), count_(0)
   {
+    if (wiringPiSetup() == -1) {
+      std::cerr << "Failed to initialize WiringPi." << std::endl;
+    }
     publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
     auto timer_callback =
       [this]() -> void {
