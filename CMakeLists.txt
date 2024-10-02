@@ -21,7 +21,7 @@ find_package(std_msgs REQUIRED)
 add_executable(talker src/publisher_lambda_function.cpp)
 add_executable(listener src/subscriber_lambda_function.cpp)
 
-target_link_libraries(talker Eigen3::Eigen libwiringPi.so)
+target_link_libraries(talker Eigen3::Eigen libwiringPi.so libgpiod.so)
 
 ament_target_dependencies(talker rclcpp std_msgs tf2 tf2_ros)
 ament_target_dependencies(listener rclcpp std_msgs)

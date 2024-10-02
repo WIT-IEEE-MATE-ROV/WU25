@@ -4,3 +4,6 @@
 [submodule "wiringOP"]
 	path = wiringOP
 	url = https://github.com/orangepi-xunlong/wiringOP.git
+[submodule "libgpiod"]
+	path = libgpiod
+	url = https://github.com/brgl/libgpiod.git

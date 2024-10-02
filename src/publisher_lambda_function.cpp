@@ -18,8 +18,10 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
+#include <linux/i2c.h>
+#include <linux/i2c-dev.h>
 #include <wiringPi.h>
-
+#include <gpiod.h>
 using namespace std::chrono_literals;
 
 /* This example creates a subclass of Node and uses a fancy C++11 lambda
@@ -32,9 +34,10 @@ public:
   MinimalPublisher()
   : Node("minimal_publisher"), count_(0)
   {
-    if (wiringPiSetup() == -1) {
-      std::cerr << "Failed to initialize WiringPi." << std::endl;
-    }
+//    if (wiringPiSetup() == -1) {
+//      std::cerr << "Failed to initialize WiringPi." << std::endl;
+//    }
+    struct gpiod_request_config *req_cfg = NULL;
     publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
     auto timer_callback =
       [this]() -> void {
