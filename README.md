@@ -1,10 +1,11 @@
 # WU25
 ### 2025 MATE ROV Competition Code
 ## Install
-1. Install ROS 2 Jazzy
-2. [Create a ROS 2 workspace](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html)
-3. `cd [YOUR WORKSPACE]/src`
-4. `source install/local_setup.bash`
+1. [Install ROS 2 Jazzy](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html)
+2. [Create a ROS 2 workspace](https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html)
+3. cd [YOUR_WORKSPACE]
+3. `source install/local_setup.bash`
+4. `cd [YOUR WORKSPACE]/src`
 5. `git clone https://github.com/WIT-IEEE-MATE-ROV/WU25.git --recurse-submodules`
 #### Install wiringOP
 6. Run `sudo ./build` in wiringOP directory
