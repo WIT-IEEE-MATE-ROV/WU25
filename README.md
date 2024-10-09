@@ -37,4 +37,4 @@ Find node `spi@fecb0000` in opi5.dts and change the `status` property to "okay"
 
 5. Reboot the Orange Pi 5
 
-Now hopefully `/dev/spidev4.1` shows up. If it doesn't you might need to run `sudo modprobe spidev` to add load the module.
+Now hopefully `/dev/spidev4.1` shows up. If it doesn't you might need to run `sudo modprobe spidev` to load the module.

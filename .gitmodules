@@ -7,3 +7,6 @@
 [submodule "libgpiod"]
 	path = libgpiod
 	url = https://github.com/brgl/libgpiod.git
+[submodule "sh2"]
+	path = sh2
+	url = https://github.com/ceva-dsp/sh2.git

@@ -22,6 +22,14 @@
 #include <linux/i2c-dev.h>
 #include <wiringPi.h>
 #include <gpiod.h>
+#include "sh2.h"
+#include "sh2_util.h"
+#include "euler.h"
+#include "sh2_err.h"
+#include "sh2_SensorValue.h"
+
+
+
 using namespace std::chrono_literals;
 
 /* This example creates a subclass of Node and uses a fancy C++11 lambda
@@ -37,6 +45,8 @@ public:
 //    if (wiringPiSetup() == -1) {
 //      std::cerr << "Failed to initialize WiringPi." << std::endl;
 //    }
+    sh2_WheelEncoder_t s;
+    
     struct gpiod_request_config *req_cfg = NULL;
     publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
     auto timer_callback =
@@ -44,6 +54,7 @@ public:
         auto message = std_msgs::msg::String();
         message.data = "Hello, world! " + std::to_string(this->count_++);
         RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+
         this->publisher_->publish(message);
       };
     timer_ = this->create_wall_timer(500ms, timer_callback);
