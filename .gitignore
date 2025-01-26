@@ -2,6 +2,7 @@
 .idea/
 .vscode/
 cmake-build-debug/
+CMakeFiles/
 nohup.out
 __pycache__/
 build/

@@ -42,9 +42,9 @@ public:
   MinimalPublisher()
   : Node("minimal_publisher"), count_(0)
   {
-//    if (wiringPiSetup() == -1) {
-//      std::cerr << "Failed to initialize WiringPi." << std::endl;
-//    }
+   if (wiringPiSetup() == -1) {
+     std::cerr << "Failed to initialize WiringPi." << std::endl;
+   }
     sh2_WheelEncoder_t s;
     
     struct gpiod_request_config *req_cfg = NULL;

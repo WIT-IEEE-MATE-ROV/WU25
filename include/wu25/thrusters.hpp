@@ -1,0 +1,121 @@
+#pragma once
+
+#include <Eigen/Geometry>
+#include <Eigen/Dense>
+
+#include "thruster_data.hpp"
+
+using namespace Eigen;
+
+class Thrusters {
+public:
+    using PWMValue = uint16_t;
+    using ThrusterDecomp = CompleteOrthogonalDecomposition<Matrix<float, 3, 4> >;
+
+    class ThrusterOutputs {
+    public:
+        Vector4f horizontal_;
+        Vector4f vertical_;
+
+        ThrusterOutputs(const Solve<ThrusterDecomp, Vector3f> &horizontal,
+                        const Solve<ThrusterDecomp, Vector3f> &vertical);
+
+        ~ThrusterOutputs();
+
+        void Desaturate(float max_thrust_kgf);
+
+        std::string ToString();
+
+        float flh() const;
+
+        float frh() const;
+
+        float blh() const;
+
+        float brh() const;
+
+        float flv() const;
+
+        float frv() const;
+
+        float blv() const;
+
+        float brv() const;
+
+        float operator[](int i) const;
+
+        float operator[](const size_t i) const {
+            return operator[](static_cast<int>(i));
+        }
+    };
+
+    class ThrustVector {
+    public:
+        // XYZ
+        Vector<float, 3> linear_;
+        // RPY
+        Vector<float, 3> angular_;
+
+        ThrustVector() {
+            linear_ = Vector<float, 3>::Zero();
+            angular_ = Vector<float, 3>::Zero();
+        }
+
+        ThrustVector(const Vector<float, 3> &linear, const Vector<float, 3> &angular) {
+            linear_ = linear;
+            angular_ = angular;
+        }
+
+        ThrusterOutputs GetThrusterOutputs(const ThrusterDecomp &horizontal_decomp,
+                                           const ThrusterDecomp &vertical_decomp) const;
+    };
+
+    Thrusters();
+
+    ~Thrusters();
+
+    void Init();
+
+    void Update();
+
+    void SetThrustVector(const ThrustVector &thrust_vector);
+
+private:
+    void GetPWMOutputs(const ThrusterOutputs &thruster_outputs, std::array<PWMValue, 8> &pwm_outputs);
+
+    void PlotPWMVsThrust();
+
+    void PlotThrustVsPWM();
+
+    const float THRUSTER_LENGTH_HORIZONTAL_M = 0.381;
+    const float THRUSTER_WIDTH_HORIZONTAL_M = 0.3175;
+
+    const float THRUSTER_DIAGONAL_HORIZONTAL_M =
+            sqrtf(std::pow(THRUSTER_LENGTH_HORIZONTAL_M, 2) + std::pow(THRUSTER_WIDTH_HORIZONTAL_M, 2));
+
+    const float HALF_DIAGONAL_HORIZONTAL_M = THRUSTER_DIAGONAL_HORIZONTAL_M / 2.f;
+
+    const float LENGTH_DIAGONAL_ANGLE_HORIZONTAL_RAD = -std::acos(
+        THRUSTER_LENGTH_HORIZONTAL_M / THRUSTER_DIAGONAL_HORIZONTAL_M);
+
+    const float THRUSTER_LENGTH_VERTICAL_M = 0.2032;
+    const float THRUSTER_WIDTH_VERTICAL_M = 0.3429;
+    const float THRUSTER_DIAGONAL_VERTICAL_M =
+            sqrtf(std::pow(THRUSTER_LENGTH_VERTICAL_M, 2) + std::pow(THRUSTER_WIDTH_VERTICAL_M, 2));
+
+    const float HALF_LENGTH_VERTICAL_M = THRUSTER_LENGTH_VERTICAL_M / 2.f;
+    const float HALF_WIDTH_VERTICAL_M = THRUSTER_WIDTH_VERTICAL_M / 2.f;
+
+    const float THRUSTER_ANGLE_RAD = 40.f * M_PI / 180.f;
+
+    const std::string DATA_PATH = "/home/foamstein/ros2_ws/src/WU25/data/T200-Public-Performance-Data.csv";
+
+    ThrusterData thruster_data_;
+    ThrustVector thrust_vector_;
+    Quaternionf current_;
+    Quaternionf desired_;
+    ThrusterDecomp decomp_horizontal_;
+    ThrusterDecomp decomp_vertical_;
+
+    // TODO: Change to axis-angle for PID
+};

@@ -10,3 +10,9 @@
 [submodule "sh2"]
 	path = sh2
 	url = https://github.com/ceva-dsp/sh2.git
+[submodule "matplotlib-cpp"]
+	path = matplotlib-cpp
+	url = https://github.com/lava/matplotlib-cpp.git
+[submodule "matplotplusplus"]
+	path = matplotplusplus
+	url = https://github.com/alandefreitas/matplotplusplus.git
