@@ -2,7 +2,6 @@
 #include <cstring>
 #include <sstream>
 #include <iostream>
-#include <tuple>
 #include <bits/stdc++.h>
 #include <cmath>
 
@@ -11,7 +10,6 @@
 #include <matplot/freestanding/plot.h>
 
 #include "thruster_data.hpp"
-#include "PolynomialRegression.hpp"
 
 Thrusters::Thrusters(): thruster_data_(DATA_PATH) {
     Vector4f horizontal_angles = {
@@ -28,11 +26,11 @@ Thrusters::Thrusters(): thruster_data_(DATA_PATH) {
     //     std::cout << "Thrust: " << thruster_data_.GetThrustValues()[i] << std::endl;
     // }
 
-    std::cout << "Angles: " << std::endl;
-    for (int i = 0; i < 4; i++) {
-        std::cout << horizontal_angles[i] * 180.f / M_PIf << " ";
-    }
-    std::cout << std::endl;
+    // std::cout << "Angles: " << std::endl;
+    // for (int i = 0; i < 4; i++) {
+    //     std::cout << horizontal_angles[i] * 180.f / M_PIf << " ";
+    // }
+    // std::cout << std::endl;
 
     const float yaw_weight = HALF_DIAGONAL_HORIZONTAL_M * std::sin(
                                  THRUSTER_ANGLE_RAD - LENGTH_DIAGONAL_ANGLE_HORIZONTAL_RAD);
@@ -62,16 +60,16 @@ Thrusters::Thrusters(): thruster_data_(DATA_PATH) {
     const Solve horizontal_outputs = decomp_horizontal_.solve(horizontal_vector);
     const Solve vertical_outputs = decomp_vertical_.solve(vertical_vector);
 
-    std::cout << "Horizontal outputs: \n" << horizontal_outputs << std::endl;
-    std::cout << "Vertical outputs: \n" << vertical_outputs << std::endl;
+    // std::cout << "Horizontal outputs: \n" << horizontal_outputs << std::endl;
+    // std::cout << "Vertical outputs: \n" << vertical_outputs << std::endl;
+    //
+    // const auto horizontal_check = thruster_config_horizontal * horizontal_outputs;
+    // std::cout << "Horizontal Check: \n" << horizontal_check << std::endl;
+    //
+    // const auto vertical_check = thruster_config_vertical * vertical_outputs;
+    // std::cout << "Vertical Check: \n" << vertical_check << std::endl;
 
-    const auto horizontal_check = thruster_config_horizontal * horizontal_outputs;
-    std::cout << "Horizontal Check: \n" << horizontal_check << std::endl;
-
-    const auto vertical_check = thruster_config_vertical * vertical_outputs;
-    std::cout << "Vertical Check: \n" << vertical_check << std::endl;
-
-    PlotPWMVsThrust();
+    // PlotPWMVsThrust();
 }
 
 Thrusters::~Thrusters() = default;
@@ -82,24 +80,44 @@ void Thrusters::Init() {
     const ThrusterOutputs outputs = t.GetThrusterOutputs(decomp_horizontal_, decomp_vertical_);
     std::array<PWMValue, 8> pwm_outputs{};
     GetPWMOutputs(outputs, pwm_outputs);
-    std::cout << "GetThrusterOutputs: \n" << outputs.horizontal_ << '\n' << outputs.vertical_ << std::endl;
-    std::cout << "PWM values: \n";
-    for (int i = 0; i < 8; i++) {
-        std::cout << pwm_outputs[i] << ' ';
-    }
-    std::cout << std::endl;
+    // std::cout << "GetThrusterOutputs: \n" << outputs.horizontal_ << '\n' << outputs.vertical_ << std::endl;
+    // std::cout << "PWM values: \n";
+    // for (int i = 0; i < 8; i++) {
+    //     std::cout << pwm_outputs[i] << ' ';
+    // }
+    // std::cout << std::endl;
 }
 
 void Thrusters::SetThrustVector(const ThrustVector &thrust_vector) {
     thrust_vector_ = thrust_vector;
 }
 
+Thrusters::ThrusterOutputs Thrusters::Update() {
+    ThrusterOutputs outputs = thrust_vector_.GetThrusterOutputs(decomp_horizontal_, decomp_vertical_);
+    std::array<PWMValue, 8> pwms{};
 
-void Thrusters::Update() {
+    for (size_t i = 0; i < pwms.size(); i++) {
+        pwms[i] = thruster_data_.ThrustToPWM(outputs[i]);
+    }
+
+
+    // std::cout << "PWM outputs: " << std::endl;
+    // for (const PWMValue output: pwms) {
+    //     std::cout << output << " \n";
+    // }
+    // std::cout << std::endl;
+    //
+    //
+    ThrusterOutputs outputs_calculated;
+    // for (int i = 0; i < 8; i++) {
+    //     outputs_calculated[i] = thruster_data_.PWMToThrust(pwms[i]);
+    // }
+
+    return outputs_calculated;
 }
 
-void Thrusters::GetPWMOutputs(const ThrusterOutputs &thruster_outputs, std::array<PWMValue, 8> &pwm_outputs) {
-    for (size_t i = 0; i < 8; i++) {
+void Thrusters::GetPWMOutputs(const ThrusterOutputs &thruster_outputs, std::array<PWMValue, 8> &pwm_outputs) const {
+    for (int i = 0; i < 8; i++) {
         pwm_outputs[i] = thruster_data_.ThrustToPWM(thruster_outputs[i]);
     }
 }
@@ -155,6 +173,16 @@ Thrusters::ThrusterOutputs Thrusters::ThrustVector::GetThrusterOutputs(const Thr
 
 //
 
+
+Thrusters::ThrusterOutputs::ThrusterOutputs(const Vector<float, 8> &outputs) {
+    for (Index i = 0; i < 4; i++) {
+        horizontal_[i] = outputs[i];
+    }
+    for (Index i = 4; i < 8; i++) {
+        vertical_[i - 4] = outputs[i];
+    }
+}
+
 Thrusters::ThrusterOutputs::ThrusterOutputs(const Solve<ThrusterDecomp, Vector3f> &horizontal,
                                             const Solve<ThrusterDecomp, Vector3f> &vertical) {
     horizontal_ = horizontal;
@@ -192,41 +220,19 @@ std::string Thrusters::ThrusterOutputs::ToString() {
     return ss.str();
 }
 
-float Thrusters::ThrusterOutputs::flh() const {
-    return horizontal_[0];
-}
-
-float Thrusters::ThrusterOutputs::frh() const {
-    return horizontal_[1];
-}
-
-float Thrusters::ThrusterOutputs::blh() const {
-    return horizontal_[2];
-}
-
-float Thrusters::ThrusterOutputs::brh() const {
-    return horizontal_[3];
-}
-
-float Thrusters::ThrusterOutputs::flv() const {
-    return vertical_[4];
-}
-
-float Thrusters::ThrusterOutputs::frv() const {
-    return vertical_[5];
-}
-
-float Thrusters::ThrusterOutputs::blv() const {
-    return vertical_[6];
-}
-
-float Thrusters::ThrusterOutputs::brv() const {
-    return vertical_[7];
-}
-
-float Thrusters::ThrusterOutputs::operator[](const int i) const {
+float &Thrusters::ThrusterOutputs::operator[](const size_t i) {
     if (i >= 8) {
-        return 0;
+        return vertical_[vertical_.size() - 1];
+    }
+    if (i >= 4) {
+        return vertical_[i - 4];
+    }
+    return horizontal_[i];
+}
+
+float Thrusters::ThrusterOutputs::operator[](const size_t i) const {
+    if (i >= 8) {
+        return vertical_[vertical_.size() - 1];
     }
     if (i >= 4) {
         return vertical_[i - 4];

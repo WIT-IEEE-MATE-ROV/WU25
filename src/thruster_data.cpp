@@ -48,17 +48,17 @@ ThrusterData::ThrusterData(const std::string &file_path) {
     regression.fitIt(pwm_left_vec, thrust_left_vec, 2, pwm_to_thrust_fit_left_coeffs_);
     regression.fitIt(pwm_right_vec, thrust_right_vec, 2, pwm_to_thrust_fit_right_coeffs_);
 
-    std::cout << "PWM to Thrust Left coeffs:\n";
-    for (const float c: pwm_to_thrust_fit_left_coeffs_) {
-        std::cout << c << ' ';
-    }
-    std::cout << std::endl;
-
-    std::cout << "PWM to Thrust Left coeffs:\n";
-    for (const float c: pwm_to_thrust_fit_left_coeffs_) {
-        std::cout << c << ' ';
-    }
-    std::cout << std::endl;
+    // std::cout << "PWM to Thrust Left coeffs:\n";
+    // for (const float c: pwm_to_thrust_fit_left_coeffs_) {
+    //     std::cout << c << ' ';
+    // }
+    // std::cout << std::endl;
+    //
+    // std::cout << "PWM to Thrust Left coeffs:\n";
+    // for (const float c: pwm_to_thrust_fit_left_coeffs_) {
+    //     std::cout << c << ' ';
+    // }
+    // std::cout << std::endl;
 }
 
 uint16_t ThrusterData::ThrustToPWM(const float thrust_kgf) const {

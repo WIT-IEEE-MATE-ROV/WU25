@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 project(wu25)
 
+set(CMAKE_CXX_STANDARD 23)
+
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif ()
@@ -32,6 +34,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 
 add_library(bno08x src/drivers/bno08x.cpp include/wu25/bno08x.hpp)
@@ -49,7 +52,8 @@ add_executable(thrusters src/thruster_node.cpp src/thrusters.cpp include/wu25/th
         include/wu25/thruster_data.hpp
         src/thruster_data.cpp
         csv/csv.hpp
-        include/wu25/PolynomialRegression.hpp)
+        include/wu25/PolynomialRegression.hpp
+        include/wu25/controller_map.hpp)
 
 target_link_libraries(talker Eigen3::Eigen libgpiod.so)
 target_link_libraries(bno_node sh2lib bno08x libgpiod.so)
@@ -69,9 +73,9 @@ target_include_directories(bno_node
         $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(talker rclcpp std_msgs tf2 tf2_ros)
-ament_target_dependencies(listener rclcpp std_msgs)
+ament_target_dependencies(listener rclcpp std_msgs sensor_msgs)
 ament_target_dependencies(bno_node rclcpp std_msgs)
-ament_target_dependencies(thrusters rclcpp std_msgs)
+ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs)
 
 install(TARGETS
         talker

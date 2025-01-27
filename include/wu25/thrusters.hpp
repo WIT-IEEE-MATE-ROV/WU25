@@ -17,6 +17,12 @@ public:
         Vector4f horizontal_;
         Vector4f vertical_;
 
+        ThrusterOutputs() = default;
+
+        explicit ThrusterOutputs(const Vector<float, 8> &outputs);
+
+        ThrusterOutputs(Vector4f horizontal, Vector4f vertical);
+
         ThrusterOutputs(const Solve<ThrusterDecomp, Vector3f> &horizontal,
                         const Solve<ThrusterDecomp, Vector3f> &vertical);
 
@@ -26,26 +32,56 @@ public:
 
         std::string ToString();
 
-        float flh() const;
+        [[nodiscard]] float flh() const {
+            return horizontal_[0];
+        }
 
-        float frh() const;
+        [[nodiscard]] float frh() const {
+            return horizontal_[1];
+        }
 
-        float blh() const;
+        [[nodiscard]] float blh() const {
+            return horizontal_[2];
+        }
 
-        float brh() const;
+        [[nodiscard]] float brh() const {
+            return horizontal_[3];
+        }
 
-        float flv() const;
+        [[nodiscard]] float flv() const {
+            return vertical_[0];
+        }
 
-        float frv() const;
+        [[nodiscard]] float frv() const {
+            return vertical_[1];
+        }
 
-        float blv() const;
+        [[nodiscard]] float blv() const {
+            return vertical_[2];
+        }
 
-        float brv() const;
+        [[nodiscard]] float brv() const {
+            return vertical_[3];
+        }
 
-        float operator[](int i) const;
+        float &operator[](size_t i);
 
-        float operator[](const size_t i) const {
-            return operator[](static_cast<int>(i));
+        float operator[](size_t i) const;
+
+        float &operator()(const Index i) {
+            return operator[](static_cast<size_t>(i));
+        }
+
+        float operator()(const Index i) const {
+            return operator[](static_cast<size_t>(i));
+        }
+
+        float &operator[](const int i) {
+            return operator[](static_cast<size_t>(i));
+        }
+
+        float operator[](const int i) const {
+            return operator[](static_cast<size_t>(i));
         }
     };
 
@@ -61,13 +97,22 @@ public:
             angular_ = Vector<float, 3>::Zero();
         }
 
+        ThrustVector(const Vector<float, 6> &vec) {
+            for (int i = 0; i < 3; i++) {
+                linear_[i] = vec[i];
+            }
+            for (int i = 3; i < 6; i++) {
+                angular_[i] = vec[i];
+            }
+        }
+
         ThrustVector(const Vector<float, 3> &linear, const Vector<float, 3> &angular) {
             linear_ = linear;
             angular_ = angular;
         }
 
-        ThrusterOutputs GetThrusterOutputs(const ThrusterDecomp &horizontal_decomp,
-                                           const ThrusterDecomp &vertical_decomp) const;
+        [[nodiscard]] ThrusterOutputs GetThrusterOutputs(const ThrusterDecomp &horizontal_decomp,
+                                                         const ThrusterDecomp &vertical_decomp) const;
     };
 
     Thrusters();
@@ -76,12 +121,12 @@ public:
 
     void Init();
 
-    void Update();
+    ThrusterOutputs Update();
 
     void SetThrustVector(const ThrustVector &thrust_vector);
 
 private:
-    void GetPWMOutputs(const ThrusterOutputs &thruster_outputs, std::array<PWMValue, 8> &pwm_outputs);
+    void GetPWMOutputs(const ThrusterOutputs &thruster_outputs, std::array<PWMValue, 8> &pwm_outputs) const;
 
     void PlotPWMVsThrust();
 
@@ -116,6 +161,6 @@ private:
     Quaternionf desired_;
     ThrusterDecomp decomp_horizontal_;
     ThrusterDecomp decomp_vertical_;
-
+    std::array<float, 8> pwm_outputs_{};
     // TODO: Change to axis-angle for PID
 };
