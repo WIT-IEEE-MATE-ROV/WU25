@@ -16,7 +16,7 @@
 #include <sh2_err.h>
 #include <sh2_SensorValue.h>
 
-#include "bno08x.hpp"
+#include "drivers/bno08x.hpp"
 
 using namespace std::chrono_literals;
 

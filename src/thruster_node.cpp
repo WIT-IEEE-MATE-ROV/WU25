@@ -8,8 +8,8 @@
 #include <std_msgs/msg/string.hpp>
 #include <sensor_msgs/msg/joy.hpp>
 
-#include "thrusters.hpp"
-#include "controller_map.hpp"
+#include "thrusters/thrusters.hpp"
+#include "util/controller_map.hpp"
 
 using namespace std::chrono_literals;
 
@@ -21,20 +21,33 @@ public:
 
         joy_sub_ =
                 this->create_subscription<sensor_msgs::msg::Joy>(
-                    "joy", 10, std::bind(&ThrusterNode::JoyCallback, this, std::placeholders::_1));
+                    "joy", 3, std::bind(&ThrusterNode::JoyCallback, this, std::placeholders::_1));
 
         thrusters_ = std::make_unique<Thrusters>();
         thrusters_->Init();
 
         RCLCPP_INFO(log_, "Initialize finished\n");
+
+        Vector<float, 6> v{1, 0, 0, 0, 0, 0};
+        std::cout << "Calling constructor" << std::endl;
+        Thrusters::ThrustVector tvec(v);
+        thrusters_->SetThrustVector(tvec);
+        Quaternionf desired =
+                AngleAxisf(0, Vector3f::UnitX()) *
+                AngleAxisf(0, Vector3f::UnitY()) *
+                AngleAxisf(90.f * M_PIf / 180.f, Vector3f::UnitZ());
+
+        thrusters_->SetDesiredRotation(desired);
     }
 
     void Loop() {
         Thrusters::ThrusterOutputs applied_outputs = thrusters_->Update();
 
-        RCLCPP_INFO(log_, "%.02f\t%.02f\t%.02f\t%.02f\t%.02f\t%.02f\t%.02f\t%.02f\t",
+        RCLCPP_INFO(log_, "%.02f\t%.02f\t%.02f\t%.02f\t%.02f\t%.02f\t%.02f\t%.02f",
                     applied_outputs[0], applied_outputs[1], applied_outputs[2], applied_outputs[3],
                     applied_outputs[4], applied_outputs[5], applied_outputs[6], applied_outputs[7]);
+
+        rclcpp::shutdown();
     }
 
     void JoyCallback(const sensor_msgs::msg::Joy::UniquePtr &msg) {
@@ -58,7 +71,7 @@ public:
         // RCLCPP_INFO(log_, "X: %.03f\tY: %.03f\t Z: %.03f, Yaw: %.03f\t Pitch: %.03f",
         //             x_translation, y_translation, z_translation, z_rotation, y_rotation);
 
-        // thrusters_->SetThrustVector({{x_translation, y_translation, z_translation, 0, y_rotation, z_rotation}});
+        thrusters_->SetThrustVector({{x_translation, y_translation, z_translation}, {0, y_rotation, z_rotation}});
     }
 
 private:

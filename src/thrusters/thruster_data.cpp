@@ -6,10 +6,10 @@
 #include <cstdint>
 #include <complex>
 
-#include <csv.hpp>
+#include <../../csv/csv.hpp>
 
-#include "thruster_data.hpp"
-#include "PolynomialRegression.hpp"
+#include "thrusters/thruster_data.hpp"
+#include "util/PolynomialRegression.hpp"
 
 using namespace csv;
 

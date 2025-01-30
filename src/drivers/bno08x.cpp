@@ -22,7 +22,7 @@ extern "C" {
     #include "sh2_err.h"
 }
 
-#include "bno08x.hpp"
+#include "drivers/bno08x.hpp"
 
 
 spi_t *BNO08x::spi_dev;

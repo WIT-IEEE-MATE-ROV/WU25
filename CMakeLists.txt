@@ -19,8 +19,7 @@ set_source_files_properties(
         COMPILE_FLAGS "-Wno-all"
 )
 
-include_directories(include/wu25)
-include_directories(sh2 eigen csv)
+include_directories(include sh2 eigen csv)
 
 add_subdirectory(matplotplusplus)
 
@@ -36,34 +35,29 @@ find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
-
-add_library(bno08x src/drivers/bno08x.cpp include/wu25/bno08x.hpp)
-
 add_library(sh2lib sh2/euler.c sh2/sh2_SensorValue.c sh2/sh2.c sh2/sh2_util.c sh2/shtp.c)
 
 if (DUMMY)
     add_library(dummy_src src/dummy/wiringPi.c)
 endif ()
 
-add_executable(talker src/publisher_lambda_function.cpp src/dummy/wiringPi.c)
-add_executable(listener src/subscriber_lambda_function.cpp)
-add_executable(bno_node src/bno_node.cpp include/wu25/bno_node.hpp include/wu25/bno08x.hpp include/wu25/spi.hpp src/drivers/bno08x.cpp src/drivers/spi.cpp)
-add_executable(thrusters src/thruster_node.cpp src/thrusters.cpp include/wu25/thrusters.hpp
-        include/wu25/thruster_data.hpp
-        src/thruster_data.cpp
-        csv/csv.hpp
-        include/wu25/PolynomialRegression.hpp
-        include/wu25/controller_map.hpp)
+add_executable(bno_node src/bno_node.cpp include/bno_node.hpp include/drivers/bno08x.hpp include/drivers/spi.hpp src/drivers/bno08x.cpp src/drivers/spi.cpp)
+add_executable(thrusters
+        src/thruster_node.cpp
+        src/thrusters/thrusters.cpp
+        src/thrusters/thruster_data.cpp
+        include/thrusters/thrusters.hpp
+        include/util/PolynomialRegression.hpp
+        include/util/controller_map.hpp
+        include/util/quaternion_pid.hpp
+        csv/csv.hpp)
 
-target_link_libraries(talker Eigen3::Eigen libgpiod.so)
-target_link_libraries(bno_node sh2lib bno08x libgpiod.so)
+target_link_libraries(bno_node sh2lib gpiod)
 target_link_libraries(thrusters Eigen3::Eigen matplot)
 
 if (NOT DUMMY)
-    target_link_libraries(talker libwiringPi.so)
-    target_link_libraries(bno_node libwiringPi.so)
+    target_link_libraries(bno_node wiringPi)
 else ()
-    target_link_libraries(talker dummy_src)
     target_link_libraries(bno_node dummy_src)
 endif ()
 
@@ -72,14 +66,10 @@ target_include_directories(bno_node
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(talker rclcpp std_msgs tf2 tf2_ros)
-ament_target_dependencies(listener rclcpp std_msgs sensor_msgs)
 ament_target_dependencies(bno_node rclcpp std_msgs)
 ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs)
 
 install(TARGETS
-        talker
-        listener
         sh2lib
         bno_node
         thrusters

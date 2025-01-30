@@ -3,7 +3,7 @@
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 
-#include "thruster_data.hpp"
+#include "thrusters/thruster_data.hpp"
 
 using namespace Eigen;
 
@@ -97,12 +97,12 @@ public:
             angular_ = Vector<float, 3>::Zero();
         }
 
-        ThrustVector(const Vector<float, 6> &vec) {
+        explicit ThrustVector(const Vector<float, 6> &vec) {
             for (int i = 0; i < 3; i++) {
                 linear_[i] = vec[i];
             }
             for (int i = 3; i < 6; i++) {
-                angular_[i] = vec[i];
+                angular_[i - 3] = vec[i];
             }
         }
 
@@ -113,6 +113,34 @@ public:
 
         [[nodiscard]] ThrusterOutputs GetThrusterOutputs(const ThrusterDecomp &horizontal_decomp,
                                                          const ThrusterDecomp &vertical_decomp) const;
+
+        float operator[](const Index i) {
+            assert(i < 6);
+
+            if (i >= 3) {
+                return angular_[i - 3];
+            }
+
+            return linear_[i];
+        }
+
+        float operator[](const Index i) const {
+            assert(i < 6);
+
+            if (i >= 3) {
+                return angular_[i - 3];
+            }
+
+            return linear_[i];
+        }
+
+        float operator[](const int i) const {
+            return operator[](static_cast<Index>(i));
+        }
+
+        float operator[](const int i) {
+            return operator[](static_cast<Index>(i));
+        }
     };
 
     Thrusters();
@@ -124,6 +152,10 @@ public:
     ThrusterOutputs Update();
 
     void SetThrustVector(const ThrustVector &thrust_vector);
+
+    void SetRotation(const Quaternionf &q);
+
+    void SetDesiredRotation(const Quaternionf &q);
 
 private:
     void GetPWMOutputs(const ThrusterOutputs &thruster_outputs, std::array<PWMValue, 8> &pwm_outputs) const;
@@ -157,8 +189,8 @@ private:
 
     ThrusterData thruster_data_;
     ThrustVector thrust_vector_;
-    Quaternionf current_;
-    Quaternionf desired_;
+    Quaternionf current_rotation_{1, 0, 0, 0};
+    Quaternionf desired_rotation_{1, 0, 0, 0};
     ThrusterDecomp decomp_horizontal_;
     ThrusterDecomp decomp_vertical_;
     std::array<float, 8> pwm_outputs_{};

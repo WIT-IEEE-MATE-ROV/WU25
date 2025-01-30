@@ -39,7 +39,7 @@
  * @author Chris Engelsma
  */
 #include <vector>
-#include <stdlib.h>
+#include <cstdlib>
 #include <cmath>
 #include <stdexcept>
 

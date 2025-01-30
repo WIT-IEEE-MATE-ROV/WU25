@@ -5,11 +5,10 @@
 #include <bits/stdc++.h>
 #include <cmath>
 
-#include "thrusters.hpp"
-
 #include <matplot/freestanding/plot.h>
 
-#include "thruster_data.hpp"
+#include "thrusters/thrusters.hpp"
+#include "thrusters/thruster_data.hpp"
 
 Thrusters::Thrusters(): thruster_data_(DATA_PATH) {
     Vector4f horizontal_angles = {
@@ -88,10 +87,6 @@ void Thrusters::Init() {
     // std::cout << std::endl;
 }
 
-void Thrusters::SetThrustVector(const ThrustVector &thrust_vector) {
-    thrust_vector_ = thrust_vector;
-}
-
 Thrusters::ThrusterOutputs Thrusters::Update() {
     ThrusterOutputs outputs = thrust_vector_.GetThrusterOutputs(decomp_horizontal_, decomp_vertical_);
     std::array<PWMValue, 8> pwms{};
@@ -100,20 +95,45 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
         pwms[i] = thruster_data_.ThrustToPWM(outputs[i]);
     }
 
-
     // std::cout << "PWM outputs: " << std::endl;
     // for (const PWMValue output: pwms) {
     //     std::cout << output << " \n";
     // }
     // std::cout << std::endl;
-    //
-    //
+
+
+    std::cout << "Current: " << current_rotation_ << "\nDesired: " << desired_rotation_ << std::endl;
+
+    const Quaternionf quat_error = desired_rotation_.inverse() * current_rotation_;
+
+    std::cout << "Error: " << quat_error << std::endl;
+
+    const Vector3f error_e = quat_error.toRotationMatrix().canonicalEulerAngles(0, 1, 2);
+    std::cout << "Error euler: \n" << error_e * 180.f / M_PIf << std::endl;
+
+
     ThrusterOutputs outputs_calculated;
-    // for (int i = 0; i < 8; i++) {
-    //     outputs_calculated[i] = thruster_data_.PWMToThrust(pwms[i]);
-    // }
+    for (int i = 0; i < 8; i++) {
+        outputs_calculated[i] = thruster_data_.PWMToThrust(pwms[i]);
+    }
 
     return outputs_calculated;
+}
+
+void Thrusters::SetThrustVector(const ThrustVector &thrust_vector) {
+    thrust_vector_ = thrust_vector;
+    // std::cout << "thrust_vector_:\n";
+    // std::cout << "X:\t" << thrust_vector_[0] << "\nY:\t" << thrust_vector_[1] << "\nZ:\t" << thrust_vector_[2]
+    //         << "\nR:\t" << thrust_vector_[3] << "\nP:\t" << thrust_vector_[4] << "\nY:\t" << thrust_vector_[5]
+    //         << std::endl;
+}
+
+void Thrusters::SetRotation(const Quaternionf &q) {
+    current_rotation_ = q;
+}
+
+void Thrusters::SetDesiredRotation(const Quaternionf &q) {
+    desired_rotation_ = q;
 }
 
 void Thrusters::GetPWMOutputs(const ThrusterOutputs &thruster_outputs, std::array<PWMValue, 8> &pwm_outputs) const {
@@ -192,7 +212,6 @@ Thrusters::ThrusterOutputs::ThrusterOutputs(const Solve<ThrusterDecomp, Vector3f
 Thrusters::ThrusterOutputs::~ThrusterOutputs() = default;
 
 void Thrusters::ThrusterOutputs::Desaturate(const float max_thrust_kgf) {
-    // TODO: Maybe desat horizontal and vertical separately?
     float real_max_thrust_kgf;
     for (float value: horizontal_) {
         real_max_thrust_kgf = std::max(real_max_thrust_kgf, value);
