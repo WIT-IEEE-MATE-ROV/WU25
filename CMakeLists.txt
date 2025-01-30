@@ -19,9 +19,9 @@ set_source_files_properties(
         COMPILE_FLAGS "-Wno-all"
 )
 
-include_directories(include sh2 eigen csv)
+include_directories(include deps/sh2 deps/eigen deps/csv)
 
-add_subdirectory(matplotplusplus)
+add_subdirectory(deps/matplotplusplus)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -35,7 +35,7 @@ find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
-add_library(sh2lib sh2/euler.c sh2/sh2_SensorValue.c sh2/sh2.c sh2/sh2_util.c sh2/shtp.c)
+add_library(sh2lib deps/sh2/euler.c deps/sh2/sh2_SensorValue.c deps/sh2/sh2.c deps/sh2/sh2_util.c deps/sh2/shtp.c)
 
 if (DUMMY)
     add_library(dummy_src src/dummy/wiringPi.c)
@@ -50,7 +50,7 @@ add_executable(thrusters
         include/util/PolynomialRegression.hpp
         include/util/controller_map.hpp
         include/util/quaternion_pid.hpp
-        csv/csv.hpp)
+        deps/csv/csv.hpp)
 
 target_link_libraries(bno_node sh2lib gpiod)
 target_link_libraries(thrusters Eigen3::Eigen matplot)

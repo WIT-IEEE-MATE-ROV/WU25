@@ -1,18 +1,18 @@
 [submodule "eigen"]
-	path = eigen
+	path = deps/eigen
 	url = https://gitlab.com/libeigen/eigen.git
 [submodule "wiringOP"]
-	path = wiringOP
+	path = deps/wiringOP
 	url = https://github.com/orangepi-xunlong/wiringOP.git
 [submodule "libgpiod"]
-	path = libgpiod
+	path = deps/libgpiod
 	url = https://github.com/brgl/libgpiod.git
 [submodule "sh2"]
-	path = sh2
+	path = deps/sh2
 	url = https://github.com/ceva-dsp/sh2.git
 [submodule "matplotlib-cpp"]
 	path = matplotlib-cpp
 	url = https://github.com/lava/matplotlib-cpp.git
 [submodule "matplotplusplus"]
-	path = matplotplusplus
+	path = deps/matplotplusplus
 	url = https://github.com/alandefreitas/matplotplusplus.git
