@@ -50,7 +50,8 @@ add_executable(thrusters
         include/util/PolynomialRegression.hpp
         include/util/controller_map.hpp
         include/util/quaternion_pid.hpp
-        deps/csv/csv.hpp)
+        deps/csv/csv.hpp
+        src/util/quaternion_pid.cpp)
 
 target_link_libraries(bno_node sh2lib gpiod)
 target_link_libraries(thrusters Eigen3::Eigen matplot)

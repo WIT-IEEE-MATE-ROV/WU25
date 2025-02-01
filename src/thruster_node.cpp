@@ -28,8 +28,8 @@ public:
 
         RCLCPP_INFO(log_, "Initialize finished\n");
 
-        Vector<float, 6> v{1, 0, 0, 0, 0, 0};
-        std::cout << "Calling constructor" << std::endl;
+        const Vector<float, 6> v{1, 0, 0, 0, 0, 0};
+
         Thrusters::ThrustVector tvec(v);
         thrusters_->SetThrustVector(tvec);
         Quaternionf desired =
