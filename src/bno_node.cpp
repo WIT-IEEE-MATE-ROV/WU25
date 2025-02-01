@@ -1,5 +1,6 @@
 #include <chrono>
 #include <memory>
+#include <iostream>
 #include <string>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
@@ -27,7 +28,6 @@ public:
 
     BNONode() : Node("bno_node")
     {
-        RCLCPP_INFO(this->get_logger(), "fart ass bitch");
         timer_ = this->create_wall_timer(10ms, std::bind(&BNONode::timer_callback, this));
 
         bno.initialize();
@@ -36,7 +36,8 @@ public:
 
     void timer_callback()
     {
-        
+        std::cout << "Servicing" << std::endl;
+        bno.service();
     }
 
 private:
