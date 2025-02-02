@@ -41,7 +41,18 @@ if (DUMMY)
     add_library(dummy_src src/dummy/wiringPi.c)
 endif ()
 
-add_executable(bno_node src/bno_node.cpp include/bno_node.hpp include/drivers/bno08x.hpp include/drivers/spi.hpp src/drivers/bno08x.cpp src/drivers/spi.cpp)
+add_executable(bno_node
+        src/bno_node.cpp
+        include/bno_node.hpp
+#        include/drivers/bno08x.hpp
+        include/drivers/spi.hpp
+        include/drivers/BNO08x_ada.hpp
+#        src/drivers/bno08x.cpp
+        src/drivers/spi.cpp
+        src/drivers/BNO08x_ada.cpp
+#        src/drivers/bno08x_circuitpy.cpp
+#        include/drivers/bno08x_circuitpy.hpp
+        )
 add_executable(thrusters
         src/thruster_node.cpp
         src/thrusters/thrusters.cpp
@@ -51,12 +62,14 @@ add_executable(thrusters
         include/util/controller_map.hpp
         include/util/quaternion_pid.hpp
         deps/csv/csv.hpp)
+add_executable(test_isr src/test_isr.cpp)
 
 target_link_libraries(bno_node sh2lib gpiod)
 target_link_libraries(thrusters Eigen3::Eigen matplot)
 
 if (NOT DUMMY)
     target_link_libraries(bno_node wiringPi)
+    target_link_libraries(test_isr wiringPi)
 else ()
     target_link_libraries(bno_node dummy_src)
 endif ()
@@ -73,6 +86,7 @@ install(TARGETS
         sh2lib
         bno_node
         thrusters
+        test_isr
         DESTINATION lib/${PROJECT_NAME})
 
 ament_python_install_package(scripts)
