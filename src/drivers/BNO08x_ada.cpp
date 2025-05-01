@@ -7,11 +7,15 @@
 #include <chrono>
 #include <thread>
 #include <pthread.h>
+#include <iostream>
 
 #include <wiringPi.h>
 #include <gpiod.h>
 #include "drivers/spi.hpp"
 #include "drivers/BNO08x_ada.hpp"
+#include "sh2_util.h"
+#include "sh2_hal.h"
+#include "sh2_err.h"
 
 using namespace std::chrono_literals;
 typedef struct {
@@ -38,6 +42,7 @@ volatile uint64_t interrupts = 0;
 
 static sh2_SensorValue_t *_sensor_value = NULL;
 static bool _reset_occurred = false;
+bool print_ints = false;
 
 static bool spihal_wait_for_int(void);
 
@@ -57,21 +62,6 @@ static void hal_callback(void *cookie, sh2_AsyncEvent_t *pEvent);
 static void sensorHandler(void *cookie, sh2_SensorEvent_t *pEvent);
 
 static void hal_hardwareReset(void);
-
-uint32_t increment_counter(counter *c) {
-    pthread_mutex_lock(&c->lock);
-    uint32_t new_value = ++c->value;
-    pthread_mutex_unlock(&c->lock);
-
-    return new_value;
-}
-
-uint32_t counter_get(counter *c) {
-    pthread_mutex_lock(&c->lock);
-    uint32_t rc = c->value;
-    pthread_mutex_unlock(&c->lock);
-    return rc;
-}
 
 /**
  * @brief Construct a new Adafruit_BNO08x::Adafruit_BNO08x object
@@ -95,29 +85,23 @@ Adafruit_BNO08x::~Adafruit_BNO08x(void) {
 
 
 void h_intn_cb() {
-//    uint32_t v = increment_counter(&interrupt_counter);
     int_count = int_count + 1;
-//    printf("INT: %u\n", int_count);
+    if (print_ints) {
+        printf("INT: %u\n", int_count);
+    }
 }
+
 
 /*!  @brief Initializer for post i2c/spi init
  *   @returns True if chip identified and initialized
  */
 bool Adafruit_BNO08x::init() {
-    interrupt_counter.value = 0;
-    pthread_mutex_init(&interrupt_counter.lock, NULL);
-
-    printf("Setting up wiringPi\n");
     wiringPiSetup();
 
-    printf("Setting up spi\n");
     if (spi_dev == nullptr) {
         spi_dev = (spi_t *) malloc(sizeof(spi_t));
-        spi_init(spi_dev, "/dev/spidev0.0", SPI_MODE_3, 8, 100000);
+        spi_init(spi_dev, "/dev/spidev0.0", SPI_MODE_3, 8, 3000000/*100000*/);
     }
-
-    wiringPiISR(BNO_INT_PIN, INT_EDGE_FALLING, &h_intn_cb);
-
 
     _HAL.open = spihal_open;
     _HAL.close = spihal_close;
@@ -125,11 +109,15 @@ bool Adafruit_BNO08x::init() {
     _HAL.write = spihal_write;
     _HAL.getTimeUs = hal_getTimeUs;
 
-
     int status;
 
-    printf("Resetting sensor\n");
+    uint8_t dummy_buf[1] = {0};
+    if (spi_write(spi_dev, dummy_buf, 1) < 0) {
+        printf("Dummy write failed\n");
+    }
+
     hardwareReset();
+    std::this_thread::sleep_for(500ms);
 
     // Open SH2 interface (also registers non-sensor event handler.)
     printf("Starting SH2\n");
@@ -138,11 +126,16 @@ bool Adafruit_BNO08x::init() {
         return false;
     }
 
+    std::this_thread::sleep_for(500ms);
+
     // Check connection partially by getting the product id's
     printf("Retrieving product ids\n");
     memset(&prodIds, 0, sizeof(prodIds));
+    print_ints = true;
     status = sh2_getProdIds(&prodIds);
+    print_ints = false;
     if (status != SH2_OK) {
+        printf("Couldn't get product ids\n");
         return false;
     }
 
@@ -200,8 +193,7 @@ bool Adafruit_BNO08x::getSensorEvent(sh2_SensorValue_t *value) {
  * microseconds
  * @return true: success false: failure
  */
-bool Adafruit_BNO08x::enableReport(sh2_SensorId_t sensorId,
-                                   uint32_t interval_us) {
+bool Adafruit_BNO08x::enableReport(sh2_SensorId_t sensorId, uint32_t interval_us) {
     static sh2_SensorConfig_t config;
 
     // These sensor options are disabled or not used in most cases
@@ -223,41 +215,46 @@ bool Adafruit_BNO08x::enableReport(sh2_SensorId_t sensorId,
     return true;
 }
 
+const char *channel_to_str(uint8_t channel) {
+    switch (channel) {
+        case 0:
+            return "SHTP COMMAND";
+        case 1:
+            return "EXECUTABLE";
+        case 2:
+            return "SENSOR HUB CONTROL";
+        case 3:
+            return "INPUT SENSOR REPORT";
+        case 4:
+            return "WAKE INPUT SENSOR REPORT";
+        case 5:
+            return "GYRO ROTATION VECTOR";
+        default:
+            return "INVALID CHANNEL";
+    }
+}
+
 /**************************************** UART interface
  * ***********************************************************/
+
 
 static int spihal_open(sh2_Hal_t *self) {
     // Serial.println("SPI HAL open");
     digitalWrite(BNO_RST_PIN, HIGH);
+    wiringPiISR(BNO_INT_PIN, INT_EDGE_FALLING, &h_intn_cb);
+
     digitalWrite(BNO_WAK_PIN, LOW);
 
-    spihal_wait_for_int();
+    if (!spihal_wait_for_int()) {
+        std::cerr << "Didn't detect interrupt during wake period" << std::endl;
+    }
 
-    return 0;
+    digitalWrite(BNO_WAK_PIN, HIGH);
+
+    return SH2_OK;
 }
 
 static bool spihal_wait_for_int() {
-//    auto start_time = std::chrono::high_resolution_clock::now();
-//    uint32_t start_count = counter_get(&interrupt_counter);
-//
-//    while (start_count == counter_get(&interrupt_counter)) {
-//        auto now = std::chrono::high_resolution_clock::now();
-//        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time).count();
-//        if (elapsed_ms > 2000) {
-//            printf("Timed out waiting for int: %u\n", counter_get(&interrupt_counter));
-//            return false;
-//        }
-//    }
-//    return true;
-//    printf("Waiting\n");
-//
-//    int success = waitForInterrupt(BNO_INT_PIN, 2000) > 0;
-//    if (success) {
-//        printf("Done\n");
-//    } else {
-//        printf("Timed out\n");
-//    }
-//    return success;
     uint64_t start_int = int_count;
 
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -271,38 +268,19 @@ static bool spihal_wait_for_int() {
         }
     }
     return true;
-
-//    for (int i = 0; i < 500000000; i++) {
-//        if (!digitalRead(BNO_INT_PIN)) {
-//            printf("\n");
-//            return true;
-//        }
-//         printf(".");
-//
-//    }
-//    printf("Timed out!\n");
-//    hal_hardwareReset();
-
-    return false;
 }
 
 static void spihal_close(sh2_Hal_t *self) {
     // Serial.println("SPI HAL close");
 }
 
-static int spihal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len,
-                       uint32_t *t_us) {
+static int spihal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32_t *t_us) {
 //     printf("SPI HAL read\n");
-
     uint16_t packet_size = 0;
 
     if (!spihal_wait_for_int()) {
         return 0;
     }
-
-//    if (!spi_dev->read(pBuffer, 4, 0x00)) {
-//        return 0;
-//    }
 
     int read_ret;
     if ((read_ret = spi_read(spi_dev, pBuffer, 4)) < 0) {
@@ -315,11 +293,6 @@ static int spihal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len,
     // Unset the "continue" bit
     packet_size &= ~0x8000;
 
-//    printf("Read SHTP header. Packet size: %u, buffer size: %u\n", packet_size, len);
-//    printf("Packet size: ");
-//    printf(packet_size);
-//    printf(" & buffer size: ");
-//    printf(len);
 
     if (packet_size > len) {
         return 0;
@@ -329,48 +302,43 @@ static int spihal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len,
         return 0;
     }
 
-//    if (!spi_dev->read(pBuffer, packet_size, 0x00)) {
-//        return 0;
-//    }
-
     if ((read_ret = spi_read(spi_dev, pBuffer, packet_size)) < 0) {
         printf("SPI read failed: %d\n", read_ret);
         return 0;
     }
 
+    if (print_ints) {
+        printf("R | Channel: %s, Size: %u, SeqNum: %u\n", channel_to_str(pBuffer[2]),
+               packet_size, pBuffer[3]);
+    }
 
     return packet_size;
 }
 
 static int spihal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
-    // Serial.print("SPI HAL write packet size: ");
-    // Serial.println(len);
-
     if (!spihal_wait_for_int()) {
         return 0;
     }
 
-//    spi_dev->write(pBuffer, len);
     int write_ret;
     if ((write_ret = spi_write(spi_dev, pBuffer, static_cast<int>(len))) < 0) {
         printf("SPI write failed: %d\n", write_ret);
     }
 
+    uint16_t size = pBuffer[0] | ((pBuffer[1] << 8) & 0xFF00);
+    std::cout << "W | Channel: " << channel_to_str(pBuffer[2]) << " Size: " << pBuffer << "Seq: " << pBuffer[3] << std::endl;
+
     return static_cast<int>(len);
 }
 
-/**************************************** HAL interface
- * ***********************************************************/
+/**************************************** HAL interface ***********************************************************/
 
 static void hal_hardwareReset(void) {
-//    if (_reset_pin != -1) {
-    printf("BNO08x Hardware reset\n");
     digitalWrite(BNO_RST_PIN, LOW);
-    digitalWrite(BNO_WAK_PIN, HIGH);
-    std::this_thread::sleep_for(1000ms);
+    std::this_thread::sleep_for(1us);
     digitalWrite(BNO_RST_PIN, HIGH);
-    digitalWrite(BNO_WAK_PIN, LOW);
-//    }
+
+    std::this_thread::sleep_for(100ms);
 }
 
 static uint32_t hal_getTimeUs(sh2_Hal_t *self) {

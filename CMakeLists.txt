@@ -61,7 +61,8 @@ add_executable(thrusters
         include/util/PolynomialRegression.hpp
         include/util/controller_map.hpp
         include/util/quaternion_pid.hpp
-        deps/csv/csv.hpp)
+        deps/csv/csv.hpp
+        src/drivers/pca9685.cpp)
 add_executable(test_isr src/test_isr.cpp)
 
 target_link_libraries(bno_node sh2lib gpiod)
@@ -79,7 +80,7 @@ target_include_directories(bno_node
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(bno_node rclcpp std_msgs)
+ament_target_dependencies(bno_node rclcpp std_msgs geometry_msgs)
 ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs)
 
 install(TARGETS
