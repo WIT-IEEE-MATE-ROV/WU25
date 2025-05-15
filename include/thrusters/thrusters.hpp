@@ -3,6 +3,7 @@
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 
+#include <ament_index_cpp/get_package_share_directory.hpp>
 #include "thrusters/thruster_data.hpp"
 
 using namespace Eigen;
@@ -10,6 +11,7 @@ using namespace Eigen;
 class Thrusters {
 public:
     using PWMValue = uint16_t;
+    using PCAOutputs = std::array<PWMValue, 8>;
     using ThrusterDecomp = CompleteOrthogonalDecomposition<Matrix<float, 3, 4> >;
 
     class ThrusterOutputs {
@@ -157,8 +159,9 @@ public:
 
     void SetDesiredRotation(const Quaternionf &q);
 
+    [[nodiscard]] std::array<PWMValue, 8> GetPWMOutputs(const ThrusterOutputs &thruster_outputs) const;
+
 private:
-    void GetPWMOutputs(const ThrusterOutputs &thruster_outputs, std::array<PWMValue, 8> &pwm_outputs) const;
 
     void PlotPWMVsThrust();
 
@@ -185,7 +188,9 @@ private:
 
     const float THRUSTER_ANGLE_RAD = 40.f * M_PI / 180.f;
 
-    const std::string DATA_PATH = "/home/foamstein/ros2_ws/src/WU25/data/T200-Public-Performance-Data.csv";
+//    const std::string DATA_PATH = "/home/foamstein/ros2_ws/src/WU25/data/T200-Public-Performance-Data.csv";
+    const std::string DATA_PATH = ament_index_cpp::get_package_share_directory("wu25")
+            + "/data/T200-Public-Performance-Data.csv";
 
     ThrusterData thruster_data_;
     ThrustVector thrust_vector_;

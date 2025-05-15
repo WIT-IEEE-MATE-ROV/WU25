@@ -27,10 +27,10 @@ namespace XBoxController {
         RIGHT_STICK = 8,
         LEFT_SHOULDER = 9,
         RIGHT_SHOULDER = 10,
-        DPAD_UP = 11,
-        DPAD_DOWN = 12,
-        DPAD_LEFT = 13,
-        DPAD_RIGHT = 14,
+//        DPAD_UP = 11,
+//        DPAD_DOWN = 12,
+//        DPAD_LEFT = 13,
+//        DPAD_RIGHT = 14,
     };
 }
 

@@ -76,9 +76,10 @@ Thrusters::~Thrusters() = default;
 void Thrusters::Init() {
     const ThrustVector t({1, 0, 0}, {0, 0, 0});
 
-    const ThrusterOutputs outputs = t.GetThrusterOutputs(decomp_horizontal_, decomp_vertical_);
+    const ThrusterOutputs thrust_outputs = t.GetThrusterOutputs(decomp_horizontal_, decomp_vertical_);
     std::array<PWMValue, 8> pwm_outputs{};
-    GetPWMOutputs(outputs, pwm_outputs);
+    pwm_outputs = GetPWMOutputs(thrust_outputs);
+
     // std::cout << "GetThrusterOutputs: \n" << outputs.horizontal_ << '\n' << outputs.vertical_ << std::endl;
     // std::cout << "PWM values: \n";
     // for (int i = 0; i < 8; i++) {
@@ -95,6 +96,8 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
         pwms[i] = thruster_data_.ThrustToPWM(outputs[i]);
     }
 
+    return outputs;
+/*
     // std::cout << "PWM outputs: " << std::endl;
     // for (const PWMValue output: pwms) {
     //     std::cout << output << " \n";
@@ -118,6 +121,7 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
     }
 
     return outputs_calculated;
+*/
 }
 
 void Thrusters::SetThrustVector(const ThrustVector &thrust_vector) {
@@ -136,10 +140,12 @@ void Thrusters::SetDesiredRotation(const Quaternionf &q) {
     desired_rotation_ = q;
 }
 
-void Thrusters::GetPWMOutputs(const ThrusterOutputs &thruster_outputs, std::array<PWMValue, 8> &pwm_outputs) const {
+Thrusters::PCAOutputs Thrusters::GetPWMOutputs(const ThrusterOutputs &thruster_outputs) const {
+    PCAOutputs pwm_outputs{};
     for (int i = 0; i < 8; i++) {
         pwm_outputs[i] = thruster_data_.ThrustToPWM(thruster_outputs[i]);
     }
+    return pwm_outputs;
 }
 
 void Thrusters::PlotPWMVsThrust() {

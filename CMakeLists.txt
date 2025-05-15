@@ -26,6 +26,7 @@ add_subdirectory(deps/matplotplusplus)
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -44,26 +45,32 @@ endif ()
 add_executable(bno_node
         src/bno_node.cpp
         include/bno_node.hpp
-#        include/drivers/bno08x.hpp
+        #        include/drivers/bno08x.hpp
         include/drivers/spi.hpp
         include/drivers/BNO08x_ada.hpp
-#        src/drivers/bno08x.cpp
+        #        src/drivers/bno08x.cpp
         src/drivers/spi.cpp
         src/drivers/BNO08x_ada.cpp
-#        src/drivers/bno08x_circuitpy.cpp
-#        include/drivers/bno08x_circuitpy.hpp
-        )
+        #        src/drivers/bno08x_circuitpy.cpp
+        #        include/drivers/bno08x_circuitpy.hpp
+)
 add_executable(thrusters
         src/thruster_node.cpp
         src/thrusters/thrusters.cpp
         src/thrusters/thruster_data.cpp
+        src/drivers/pca9685.cpp
         include/thrusters/thrusters.hpp
         include/util/PolynomialRegression.hpp
         include/util/controller_map.hpp
         include/util/quaternion_pid.hpp
         deps/csv/csv.hpp
-        src/drivers/pca9685.cpp)
+)
 add_executable(test_isr src/test_isr.cpp)
+
+add_executable(pca_test
+        src/pca_test_node.cpp
+        src/drivers/pca9685.cpp
+)
 
 target_link_libraries(bno_node sh2lib gpiod)
 target_link_libraries(thrusters Eigen3::Eigen matplot)
@@ -81,19 +88,25 @@ target_include_directories(bno_node
         $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(bno_node rclcpp std_msgs geometry_msgs)
-ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs)
+ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs ament_index_cpp)
+ament_target_dependencies(pca_test rclcpp std_msgs sensor_msgs)
 
 install(TARGETS
         sh2lib
         bno_node
         thrusters
         test_isr
+        pca_test
         DESTINATION lib/${PROJECT_NAME})
 
 ament_python_install_package(scripts)
 
 install(DIRECTORY
         launch
+        DESTINATION share/${PROJECT_NAME})
+
+install(DIRECTORY
+        data
         DESTINATION share/${PROJECT_NAME})
 
 if (BUILD_TESTING)
