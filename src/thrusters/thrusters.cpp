@@ -9,52 +9,53 @@
 
 #include "thrusters/thrusters.hpp"
 #include "thrusters/thruster_data.hpp"
+#include "util/quaternion_pid.hpp"
 
-Thrusters::Thrusters(): thruster_data_(DATA_PATH) {
-    Vector4f horizontal_angles = {
+Thrusters::Thrusters(): thruster_data_(DATA_PATH), rotation_controller_(x_params_, y_params_, z_params_) {
+    Vector4f horizontal_angles(
         THRUSTER_ANGLE_RAD, -THRUSTER_ANGLE_RAD, 2.f * M_PIf - THRUSTER_ANGLE_RAD, -(2.f * M_PIf - THRUSTER_ANGLE_RAD)
-    };
+    );
 
+    // Constrain angles to +-180
     for (float &angle: horizontal_angles) {
         angle = std::fmod(angle, M_PIf);
     }
-
-    // for (size_t i = 0; i < thruster_data_.GetPWMValues().size(); i++) {
-    //     std::cout << "PWM: " << thruster_data_.GetPWMValues()[i] << '\t';
-    //     std::cout << "Current: " << thruster_data_.GetCurrentValues()[i] << '\t';
-    //     std::cout << "Thrust: " << thruster_data_.GetThrustValues()[i] << std::endl;
-    // }
-
-    // std::cout << "Angles: " << std::endl;
-    // for (int i = 0; i < 4; i++) {
-    //     std::cout << horizontal_angles[i] * 180.f / M_PIf << " ";
-    // }
-    // std::cout << std::endl;
 
     const float yaw_weight = HALF_DIAGONAL_HORIZONTAL_M * std::sin(
                                  THRUSTER_ANGLE_RAD - LENGTH_DIAGONAL_ANGLE_HORIZONTAL_RAD);
 
     Matrix<float, 3, 4> thruster_config_horizontal;
-    thruster_config_horizontal.row(0) << std::cos(horizontal_angles[0]), std::cos(horizontal_angles[1]),
-            std::cos(horizontal_angles[2]), std::cos(horizontal_angles[3]);
-    thruster_config_horizontal.row(1) << std::sin(horizontal_angles[0]), std::sin(horizontal_angles[1]),
-            std::sin(horizontal_angles[2]), std::sin(horizontal_angles[3]);
+    thruster_config_horizontal.row(0) <<
+            std::cos(horizontal_angles[0]),
+            std::cos(horizontal_angles[1]),
+            std::cos(horizontal_angles[2]),
+            std::cos(horizontal_angles[3]);
+    thruster_config_horizontal.row(1) <<
+            std::sin(horizontal_angles[0]),
+            std::sin(horizontal_angles[1]),
+            std::sin(horizontal_angles[2]),
+            std::sin(horizontal_angles[3]);
     thruster_config_horizontal.row(2) << yaw_weight, -yaw_weight, -yaw_weight, yaw_weight;
 
     Matrix<float, 3, 4> thruster_config_vertical;
     thruster_config_vertical.row(0) << 1.f, 1.f, 1.f, 1.f;
-    thruster_config_vertical.row(1) << HALF_LENGTH_VERTICAL_M, HALF_LENGTH_VERTICAL_M, -HALF_LENGTH_VERTICAL_M, -
-            HALF_LENGTH_VERTICAL_M;
-    thruster_config_vertical.row(2) << HALF_WIDTH_VERTICAL_M, -HALF_WIDTH_VERTICAL_M, HALF_WIDTH_VERTICAL_M, -
-            HALF_WIDTH_VERTICAL_M;
+    thruster_config_vertical.row(1) <<
+            HALF_LENGTH_VERTICAL_M, HALF_LENGTH_VERTICAL_M, -HALF_LENGTH_VERTICAL_M, -HALF_LENGTH_VERTICAL_M;
+    thruster_config_vertical.row(2) <<
+            HALF_WIDTH_VERTICAL_M, -HALF_WIDTH_VERTICAL_M, HALF_WIDTH_VERTICAL_M, -HALF_WIDTH_VERTICAL_M;
 
     decomp_horizontal_ = ThrusterDecomp(thruster_config_horizontal);
     decomp_vertical_ = ThrusterDecomp(thruster_config_vertical);
 
+    x_params_ = {.p = 1};
+    y_params_ = {.p = 1};
+    z_params_ = {.p = 1};
+    // rotation_controller_ = {x_params_, y_params_, z_params_};
+
     // X, Y, Yaw
-    const Vector3f horizontal_vector = {1, 0, 0};
+    const Vector3f horizontal_vector(1, 0, 0);
     // Z, Pitch, Roll
-    const Vector3f vertical_vector = {1, 1, 0};
+    const Vector3f vertical_vector(1, 1, 0);
 
     const Solve horizontal_outputs = decomp_horizontal_.solve(horizontal_vector);
     const Solve vertical_outputs = decomp_vertical_.solve(vertical_vector);
@@ -105,15 +106,17 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
     // std::cout << std::endl;
 
 
-    std::cout << "Current: " << current_rotation_ << "\nDesired: " << desired_rotation_ << std::endl;
+    // std::cout << "Current: " << current_rotation_ << "\nDesired: " << desired_rotation_ << std::endl;
+    //
+    // const Quaternionf quat_error = desired_rotation_.inverse() * current_rotation_;
+    //
+    // std::cout << "Error: " << quat_error << std::endl;
+    //
+    // const Vector3f error_e = quat_error.toRotationMatrix().canonicalEulerAngles(0, 1, 2);
+    // std::cout << "Error euler: \n" << error_e * 180.f / M_PIf << std::endl;
 
-    const Quaternionf quat_error = desired_rotation_.inverse() * current_rotation_;
-
-    std::cout << "Error: " << quat_error << std::endl;
-
-    const Vector3f error_e = quat_error.toRotationMatrix().canonicalEulerAngles(0, 1, 2);
-    std::cout << "Error euler: \n" << error_e * 180.f / M_PIf << std::endl;
-
+    Vector3f rotation_outputs = rotation_controller_.Calculate(current_rotation_);
+    std::cout << "PID outputs: \n" << rotation_outputs << std::endl;
 
     ThrusterOutputs outputs_calculated;
     for (int i = 0; i < 8; i++) {
@@ -126,10 +129,6 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
 
 void Thrusters::SetThrustVector(const ThrustVector &thrust_vector) {
     thrust_vector_ = thrust_vector;
-    // std::cout << "thrust_vector_:\n";
-    // std::cout << "X:\t" << thrust_vector_[0] << "\nY:\t" << thrust_vector_[1] << "\nZ:\t" << thrust_vector_[2]
-    //         << "\nR:\t" << thrust_vector_[3] << "\nP:\t" << thrust_vector_[4] << "\nY:\t" << thrust_vector_[5]
-    //         << std::endl;
 }
 
 void Thrusters::SetRotation(const Quaternionf &q) {
@@ -138,6 +137,7 @@ void Thrusters::SetRotation(const Quaternionf &q) {
 
 void Thrusters::SetDesiredRotation(const Quaternionf &q) {
     desired_rotation_ = q;
+    rotation_controller_.SetSetpoint(q);
 }
 
 Thrusters::PCAOutputs Thrusters::GetPWMOutputs(const ThrusterOutputs &thruster_outputs) const {
@@ -196,9 +196,6 @@ Thrusters::ThrusterOutputs Thrusters::ThrustVector::GetThrusterOutputs(const Thr
 
     return {horizontal_decomp.solve(horizontal_), vertical_decomp.solve(vertical_)};
 }
-
-//
-
 
 Thrusters::ThrusterOutputs::ThrusterOutputs(const Vector<float, 8> &outputs) {
     for (Index i = 0; i < 4; i++) {

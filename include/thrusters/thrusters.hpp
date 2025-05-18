@@ -2,6 +2,7 @@
 
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
+#include <util/quaternion_pid.hpp>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include "thrusters/thruster_data.hpp"
@@ -198,6 +199,10 @@ private:
     Quaternionf desired_rotation_{1, 0, 0, 0};
     ThrusterDecomp decomp_horizontal_;
     ThrusterDecomp decomp_vertical_;
+    QuatPIDController::PIDParams x_params_;
+    QuatPIDController::PIDParams y_params_;
+    QuatPIDController::PIDParams z_params_;
+    QuatPIDController rotation_controller_;
     std::array<float, 8> pwm_outputs_{};
     // TODO: Change to axis-angle for PID
 };

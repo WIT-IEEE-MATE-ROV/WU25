@@ -64,20 +64,13 @@ add_executable(thrusters
         include/util/controller_map.hpp
         include/util/quaternion_pid.hpp
         deps/csv/csv.hpp
-)
-add_executable(test_isr src/test_isr.cpp)
-
-add_executable(pca_test
-        src/pca_test_node.cpp
-        src/drivers/pca9685.cpp
-)
+        src/util/quaternion_pid.cpp)
 
 target_link_libraries(bno_node sh2lib gpiod)
 target_link_libraries(thrusters Eigen3::Eigen matplot)
 
 if (NOT DUMMY)
     target_link_libraries(bno_node wiringPi)
-    target_link_libraries(test_isr wiringPi)
 else ()
     target_link_libraries(bno_node dummy_src)
 endif ()
@@ -87,16 +80,13 @@ target_include_directories(bno_node
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(bno_node rclcpp std_msgs geometry_msgs)
-ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs ament_index_cpp)
-ament_target_dependencies(pca_test rclcpp std_msgs sensor_msgs)
+ament_target_dependencies(bno_node rclcpp std_msgs)
+ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs)
 
 install(TARGETS
         sh2lib
         bno_node
         thrusters
-        test_isr
-        pca_test
         DESTINATION lib/${PROJECT_NAME})
 
 ament_python_install_package(scripts)
