@@ -5,15 +5,12 @@
 #include "util/quaternion_pid.hpp"
 #include <iostream>
 
-/
 
 QuatPIDController::QuatPIDController(const PIDParams &x_params, const PIDParams &y_params, const PIDParams &z_params) {
     x_params_ = x_params;
     y_params_ = y_params;
     z_params_ = z_params;
     prev_time_ = std::chrono::high_resolution_clock::now();
-
-    std::cout << ""
 }
 
 void QuatPIDController::SetSetpoint(const Eigen::Quaternionf &setpoint) {
@@ -24,6 +21,7 @@ Eigen::Vector3f QuatPIDController::Calculate(const Eigen::Quaternionf &current_r
     current_ = current_rotation;
     Eigen::Quaternionf error = GetError();
 
+    // Try?: if (current {dot} error < 0) then current = -current (might be error instead)
     if (error.w() < 0) {
         error = Eigen::Quaternionf{-error.w(), -error.x(), -error.y(), -error.z()};
     }
@@ -31,7 +29,7 @@ Eigen::Vector3f QuatPIDController::Calculate(const Eigen::Quaternionf &current_r
     const auto current_time = std::chrono::high_resolution_clock::now();
 
     const auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - prev_time_);
-    const float dtf = static_cast<float>(dt.count());
+    const auto dtf = static_cast<float>(dt.count());
     prev_time_ = current_time;
 
 

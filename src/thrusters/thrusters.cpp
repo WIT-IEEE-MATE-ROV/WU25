@@ -11,7 +11,8 @@
 #include "thrusters/thruster_data.hpp"
 #include "util/quaternion_pid.hpp"
 
-Thrusters::Thrusters(): thruster_data_(DATA_PATH), rotation_controller_(x_params_, y_params_, z_params_) {
+
+Thrusters::Thrusters(): thruster_data_(DATA_PATH), idle_rotation_controller_(x_params_, y_params_, z_params_) {
     Vector4f horizontal_angles(
         THRUSTER_ANGLE_RAD, -THRUSTER_ANGLE_RAD, 2.f * M_PIf - THRUSTER_ANGLE_RAD, -(2.f * M_PIf - THRUSTER_ANGLE_RAD)
     );
@@ -72,24 +73,66 @@ Thrusters::Thrusters(): thruster_data_(DATA_PATH), rotation_controller_(x_params
     // PlotPWMVsThrust();
 }
 
-Thrusters::~Thrusters() = default;
-
-void Thrusters::Init() {
-    const ThrustVector t({1, 0, 0}, {0, 0, 0});
-
-    const ThrusterOutputs thrust_outputs = t.GetThrusterOutputs(decomp_horizontal_, decomp_vertical_);
-    std::array<PWMValue, 8> pwm_outputs{};
-    pwm_outputs = GetPWMOutputs(thrust_outputs);
-
-    // std::cout << "GetThrusterOutputs: \n" << outputs.horizontal_ << '\n' << outputs.vertical_ << std::endl;
-    // std::cout << "PWM values: \n";
-    // for (int i = 0; i < 8; i++) {
-    //     std::cout << pwm_outputs[i] << ' ';
-    // }
-    // std::cout << std::endl;
-}
-
 Thrusters::ThrusterOutputs Thrusters::Update() {
+    Vector3f depth_linear_output = {0, 0, 0};
+
+    if (ang_vel_control_) {
+        // Assume thrust vector angular is angular velocities in rad/s
+        // Set PID omega controller setpoints
+        x_omega_controller_.SetSetpoint(thrust_vector_.angular_.x());
+        y_omega_controller_.SetSetpoint(thrust_vector_.angular_.y());
+        z_omega_controller_.SetSetpoint(thrust_vector_.angular_.z());
+
+        auto dt = std::chrono::duration_cast<std::chrono::milliseconds>
+                (rotation_recieved_time_ns_ - previous_rotation_recieved_time_).count();
+
+        // Calculate current angular velocity
+        Vector3f angVel = CalculateAngVel(previous_rotation_, current_rotation_, static_cast<float>(dt));
+
+        // Set angular thrust vector to pid calculated kgf.
+        thrust_vector_.angular_ = {
+            x_omega_controller_.Calculate(angVel.x()),
+            y_omega_controller_.Calculate(angVel.y()),
+            z_omega_controller_.Calculate(angVel.z())
+        };
+    }
+
+    if (depth_lock_) {
+        auto rot_mat = current_rotation_.toRotationMatrix();
+        Vector3f current_euler = rot_mat.canonicalEulerAngles(2, 1, 0);
+        current_euler[0] = 0;
+
+        AngleAxisf rotZ(current_euler[0], Vector3f::UnitZ());
+        AngleAxisf rotY(current_euler[1], Vector3f::UnitY());
+        AngleAxisf rotX(current_euler[2], Vector3f::UnitX());
+        Quaternionf no_yaw = rotZ * rotY * rotX;
+
+        Vector3f desired_direction{thrust_vector_.linear_.x(), thrust_vector_.linear_.y(), 0};
+
+        thrust_vector_.linear_ += no_yaw * desired_direction;
+    }
+
+
+    // Apply rotation hold
+    if (hold_idle_rotation_ && !currently_rotating_) {
+        Vector3f holdRotOutput = idle_rotation_controller_.Calculate(current_rotation_);
+        if (std::fabs(thrust_vector_.angular_.x()) < ZERO_THRESHOLD) {
+            thrust_vector_.angular_.x() = holdRotOutput.x();
+        }
+        if (std::fabs(thrust_vector_.angular_.y()) < ZERO_THRESHOLD) {
+            thrust_vector_.angular_.y() = holdRotOutput.y();
+        }
+        if (std::fabs(thrust_vector_.angular_.z()) < ZERO_THRESHOLD) {
+            thrust_vector_.angular_.z() = holdRotOutput.z();
+        }
+    }
+
+    if (hold_idle_depth_) {
+        const float depth_command = idle_depth_controller_.Calculate(current_depth);
+        const Vector3f depth_vec{0, 0, depth_command};
+        thrust_vector_.linear_ += current_rotation_ * depth_vec;
+    }
+
     ThrusterOutputs outputs = thrust_vector_.GetThrusterOutputs(decomp_horizontal_, decomp_vertical_);
     std::array<PWMValue, 8> pwms{};
 
@@ -98,46 +141,92 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
     }
 
     return outputs;
-/*
-    // std::cout << "PWM outputs: " << std::endl;
-    // for (const PWMValue output: pwms) {
-    //     std::cout << output << " \n";
-    // }
-    // std::cout << std::endl;
-
-
-    // std::cout << "Current: " << current_rotation_ << "\nDesired: " << desired_rotation_ << std::endl;
-    //
-    // const Quaternionf quat_error = desired_rotation_.inverse() * current_rotation_;
-    //
-    // std::cout << "Error: " << quat_error << std::endl;
-    //
-    // const Vector3f error_e = quat_error.toRotationMatrix().canonicalEulerAngles(0, 1, 2);
-    // std::cout << "Error euler: \n" << error_e * 180.f / M_PIf << std::endl;
-
-    Vector3f rotation_outputs = rotation_controller_.Calculate(current_rotation_);
-    std::cout << "PID outputs: \n" << rotation_outputs << std::endl;
-
-    ThrusterOutputs outputs_calculated;
-    for (int i = 0; i < 8; i++) {
-        outputs_calculated[i] = thruster_data_.PWMToThrust(pwms[i]);
-    }
-
-    return outputs_calculated;
-*/
 }
+
+Thrusters::~Thrusters() = default;
+
+void Thrusters::Init() {
+}
+
+// Hold rotation when no angular thrust vector is given
+void Thrusters::SetHoldIdleRotation(const bool enabled) {
+    hold_idle_rotation_ = enabled;
+}
+
+// Treat desired thrust vector angular component as angular velocities instead of net kgf moment
+void Thrusters::SetAngVelControl(const bool enabled) {
+    ang_vel_control_ = enabled;
+}
+
+// Hold depth when not commanding a thrust vector that would affect depth
+void Thrusters::SetHoldIdleDepth(const bool enabled) {
+    hold_idle_depth_ = enabled;
+}
+
+// Rotate thrust vectors to global XY plane only, as to not affect depth
+void Thrusters::SetDepthLock(const bool enabled) {
+    depth_lock_ = enabled;
+}
+
 
 void Thrusters::SetThrustVector(const ThrustVector &thrust_vector) {
     thrust_vector_ = thrust_vector;
+
+    const float angular_norm = thrust_vector_.angular_.norm();
+
+    const bool rotating_now = angular_norm > ZERO_THRESHOLD;
+    if (!rotating_now) {
+        thrust_vector_.angular_ = {0, 0, 0};
+    }
+
+    // If you stop rotating then set idle depth setpoint
+    if (currently_rotating_ && !rotating_now) {
+        idle_rotation_controller_.SetSetpoint(current_rotation_);
+    }
+
+    const bool depthing_now = CalculateInclination(thrust_vector_.linear_) > DEPTH_COMMAND_THRESHOLD_DEG;
+    if (currently_depthing_ && !depthing_now) {
+        idle_depth_controller_.SetSetpoint(current_depth);
+    }
+
+    currently_depthing_ = depthing_now;
+    currently_rotating_ = rotating_now;
 }
 
 void Thrusters::SetRotation(const Quaternionf &q) {
+    previous_rotation_recieved_time_ = rotation_recieved_time_ns_;
+    rotation_recieved_time_ns_ = std::chrono::high_resolution_clock::now();
     current_rotation_ = q;
 }
 
 void Thrusters::SetDesiredRotation(const Quaternionf &q) {
     desired_rotation_ = q;
-    rotation_controller_.SetSetpoint(q);
+    idle_rotation_controller_.SetSetpoint(q);
+}
+
+Vector3f Thrusters::CalculateAngVel(const Quaternionf &q1, const Quaternionf &q2, const float dt) {
+    // Calculate relative rotation (error)
+    auto q_delta = q1.inverse() * q2;
+    q_delta.normalize();
+
+    // Convert to axis angle
+    AngleAxis<float> axisAngle(q_delta);
+
+    // Calculate axis angle omega
+    Vector3f omega = axisAngle.angle() / dt * axisAngle.axis();
+
+    return omega;
+}
+
+float Thrusters::CalculateInclination(const Quaternionf &rov_rot) {
+    const Vector3f reference_plane{0, 0, 1};
+    auto rov_plane = reference_plane * rov_rot;
+    // Orbital inclination formula
+    return std::acos(rov_plane[2] / rov_plane.norm());
+}
+
+float Thrusters::CalculateInclination(const Vector3f &plane) {
+    return std::acos(plane[2] / plane.norm());
 }
 
 Thrusters::PCAOutputs Thrusters::GetPWMOutputs(const ThrusterOutputs &thruster_outputs) const {
@@ -238,7 +327,7 @@ std::string Thrusters::ThrusterOutputs::ToString() {
     std::stringstream ss;
     std::string x_direction, y_direction, z_direction;
     std::string roll_direction, pitch_direction, yaw_direction;
-
+    // TODO: Implement
     return ss.str();
 }
 

@@ -1,13 +1,17 @@
 #pragma once
 
+#include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 #include <util/quaternion_pid.hpp>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <util/pid_controller.hpp>
+
 #include "thrusters/thruster_data.hpp"
 
 using namespace Eigen;
+using namespace std::chrono_literals;
 
 class Thrusters {
 public:
@@ -154,16 +158,29 @@ public:
 
     ThrusterOutputs Update();
 
+    void SetHoldIdleRotation(bool enabled);
+
+    void SetAngVelControl(bool enabled);
+
+    void SetHoldIdleDepth(bool enabled);
+
+    void SetDepthLock(bool enabled);
+
     void SetThrustVector(const ThrustVector &thrust_vector);
 
     void SetRotation(const Quaternionf &q);
 
     void SetDesiredRotation(const Quaternionf &q);
 
+    static Vector3f CalculateAngVel(const Quaternionf &q1, const Quaternionf &q2, float dt);
+
+    static float Thrusters::CalculateInclination(const Quaternionf& rot);
+
+    static float Thrusters::CalculateInclination(const Vector3f& plane);
+
     [[nodiscard]] std::array<PWMValue, 8> GetPWMOutputs(const ThrusterOutputs &thruster_outputs) const;
 
 private:
-
     void PlotPWMVsThrust();
 
     void PlotThrustVsPWM();
@@ -189,20 +206,52 @@ private:
 
     const float THRUSTER_ANGLE_RAD = 40.f * M_PI / 180.f;
 
-//    const std::string DATA_PATH = "/home/foamstein/ros2_ws/src/WU25/data/T200-Public-Performance-Data.csv";
+    const float MAX_ANGVEL_X_RPS = 90 * M_PIf / 180.f;
+    const float MAX_ANGVEL_Y_RPS = 90 * M_PIf / 180.f;
+    const float MAX_ANGVEL_Z_RPS = 90 * M_PIf / 180.f;
+
+    constexpr float ZERO_THRESHOLD = 0.0001f;
+    constexpr float DEPTH_COMMAND_THRESHOLD_DEG = 3.5f;
+
+
+    //    const std::string DATA_PATH = "/home/foamstein/ros2_ws/src/WU25/data/T200-Public-Performance-Data.csv";
     const std::string DATA_PATH = ament_index_cpp::get_package_share_directory("wu25")
-            + "/data/T200-Public-Performance-Data.csv";
+                                  + "/data/T200-Public-Performance-Data.csv";
 
     ThrusterData thruster_data_;
     ThrustVector thrust_vector_;
+
     Quaternionf current_rotation_{1, 0, 0, 0};
     Quaternionf desired_rotation_{1, 0, 0, 0};
+    Quaternionf previous_rotation_{1, 0, 0, 0};
+
     ThrusterDecomp decomp_horizontal_;
     ThrusterDecomp decomp_vertical_;
+
     QuatPIDController::PIDParams x_params_;
     QuatPIDController::PIDParams y_params_;
     QuatPIDController::PIDParams z_params_;
-    QuatPIDController rotation_controller_;
+    QuatPIDController idle_rotation_controller_;
+
+    PIDController x_omega_controller_{0, 0, 0};
+    PIDController y_omega_controller_{0, 0, 0};
+    PIDController z_omega_controller_{0, 0, 0};
+    PIDController idle_depth_controller_{0, 0, 0};
+
+    std::chrono::system_clock::time_point rotation_recieved_time_ns_;
+    std::chrono::system_clock::time_point previous_rotation_recieved_time_;
+
     std::array<float, 8> pwm_outputs_{};
-    // TODO: Change to axis-angle for PID
+
+    float current_depth{0};
+
+    bool hold_idle_rotation_{false};
+    bool ang_vel_control_{false};
+    bool hold_idle_depth_{false};
+    bool depth_lock_{false};
+
+    bool currently_depthing_{false};
+    bool currently_rotating_{false};
+
+    float idle_depth_setpoint_{0};
 };

@@ -51,6 +51,7 @@ add_executable(bno_node
         #        src/drivers/bno08x.cpp
         src/drivers/spi.cpp
         src/drivers/BNO08x_ada.cpp
+        include/util/pid_controller.hpp
         #        src/drivers/bno08x_circuitpy.cpp
         #        include/drivers/bno08x_circuitpy.hpp
 )
@@ -64,7 +65,9 @@ add_executable(thrusters
         include/util/controller_map.hpp
         include/util/quaternion_pid.hpp
         deps/csv/csv.hpp
-        src/util/quaternion_pid.cpp)
+        src/util/quaternion_pid.cpp
+        src/util/pid_controller.cpp
+)
 
 target_link_libraries(bno_node sh2lib gpiod)
 target_link_libraries(thrusters Eigen3::Eigen matplot)
@@ -80,8 +83,8 @@ target_include_directories(bno_node
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(bno_node rclcpp std_msgs)
-ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs)
+ament_target_dependencies(bno_node rclcpp std_msgs sensor_msgs geometry_msgs)
+ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs ament_index_cpp)
 
 install(TARGETS
         sh2lib
