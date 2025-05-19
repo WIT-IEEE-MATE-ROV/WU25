@@ -13,7 +13,7 @@
 
 
 Thrusters::Thrusters(): thruster_data_(DATA_PATH), idle_rotation_controller_(x_params_, y_params_, z_params_) {
-    Vector4f horizontal_angles(
+    Eigen::Vector4f horizontal_angles(
         THRUSTER_ANGLE_RAD, -THRUSTER_ANGLE_RAD, 2.f * M_PIf - THRUSTER_ANGLE_RAD, -(2.f * M_PIf - THRUSTER_ANGLE_RAD)
     );
 
@@ -25,7 +25,7 @@ Thrusters::Thrusters(): thruster_data_(DATA_PATH), idle_rotation_controller_(x_p
     const float yaw_weight = HALF_DIAGONAL_HORIZONTAL_M * std::sin(
                                  THRUSTER_ANGLE_RAD - LENGTH_DIAGONAL_ANGLE_HORIZONTAL_RAD);
 
-    Matrix<float, 3, 4> thruster_config_horizontal;
+    Eigen::Matrix<float, 3, 4> thruster_config_horizontal;
     thruster_config_horizontal.row(0) <<
             std::cos(horizontal_angles[0]),
             std::cos(horizontal_angles[1]),
@@ -38,7 +38,7 @@ Thrusters::Thrusters(): thruster_data_(DATA_PATH), idle_rotation_controller_(x_p
             std::sin(horizontal_angles[3]);
     thruster_config_horizontal.row(2) << yaw_weight, -yaw_weight, -yaw_weight, yaw_weight;
 
-    Matrix<float, 3, 4> thruster_config_vertical;
+    Eigen::Matrix<float, 3, 4> thruster_config_vertical;
     thruster_config_vertical.row(0) << 1.f, 1.f, 1.f, 1.f;
     thruster_config_vertical.row(1) <<
             HALF_LENGTH_VERTICAL_M, HALF_LENGTH_VERTICAL_M, -HALF_LENGTH_VERTICAL_M, -HALF_LENGTH_VERTICAL_M;
@@ -54,12 +54,12 @@ Thrusters::Thrusters(): thruster_data_(DATA_PATH), idle_rotation_controller_(x_p
     // rotation_controller_ = {x_params_, y_params_, z_params_};
 
     // X, Y, Yaw
-    const Vector3f horizontal_vector(1, 0, 0);
+    const Eigen::Vector3f horizontal_vector(1, 0, 0);
     // Z, Pitch, Roll
-    const Vector3f vertical_vector(1, 1, 0);
+    const Eigen::Vector3f vertical_vector(1, 1, 0);
 
-    const Solve horizontal_outputs = decomp_horizontal_.solve(horizontal_vector);
-    const Solve vertical_outputs = decomp_vertical_.solve(vertical_vector);
+    const Eigen::Solve horizontal_outputs = decomp_horizontal_.solve(horizontal_vector);
+    const Eigen::Solve vertical_outputs = decomp_vertical_.solve(vertical_vector);
 
     // std::cout << "Horizontal outputs: \n" << horizontal_outputs << std::endl;
     // std::cout << "Vertical outputs: \n" << vertical_outputs << std::endl;
@@ -74,7 +74,7 @@ Thrusters::Thrusters(): thruster_data_(DATA_PATH), idle_rotation_controller_(x_p
 }
 
 Thrusters::ThrusterOutputs Thrusters::Update() {
-    Vector3f depth_linear_output = {0, 0, 0};
+    Eigen::Vector3f depth_linear_output = {0, 0, 0};
 
     if (ang_vel_control_) {
         // Assume thrust vector angular is angular velocities in rad/s
@@ -87,7 +87,7 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
                 (rotation_recieved_time_ns_ - previous_rotation_recieved_time_).count();
 
         // Calculate current angular velocity
-        Vector3f angVel = CalculateAngVel(previous_rotation_, current_rotation_, static_cast<float>(dt));
+        Eigen::Vector3f angVel = CalculateAngVel(previous_rotation_, current_rotation_, static_cast<float>(dt));
 
         // Set angular thrust vector to pid calculated kgf.
         thrust_vector_.angular_ = {
@@ -99,27 +99,27 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
 
     if (depth_lock_) {
         auto rot_mat = current_rotation_.toRotationMatrix();
-        Vector3f current_euler = rot_mat.canonicalEulerAngles(2, 1, 0);
+        Eigen::Vector3f current_euler = rot_mat.canonicalEulerAngles(2, 1, 0);
         current_euler[0] = 0;
 
-        AngleAxisf rotZ(current_euler[0], Vector3f::UnitZ());
-        AngleAxisf rotY(current_euler[1], Vector3f::UnitY());
-        AngleAxisf rotX(current_euler[2], Vector3f::UnitX());
-        Quaternionf no_yaw = rotZ * rotY * rotX;
+        Eigen::AngleAxisf rotZ(current_euler[0], Eigen::Vector3f::UnitZ());
+        Eigen::AngleAxisf rotY(current_euler[1], Eigen::Vector3f::UnitY());
+        Eigen::AngleAxisf rotX(current_euler[2], Eigen::Vector3f::UnitX());
+        Eigen::Quaternionf no_yaw = rotZ * rotY * rotX;
 
-        Vector3f desired_direction{thrust_vector_.linear_.x(), thrust_vector_.linear_.y(), 0};
+        Eigen::Vector3f desired_direction{thrust_vector_.linear_.x(), thrust_vector_.linear_.y(), 0};
 
         thrust_vector_.linear_ += no_yaw * desired_direction;
 
         if (!hold_idle_depth_) {
-            const Vector3f depth_vec{0, 0, thrust_vector_.linear_.z()};
+            const Eigen::Vector3f depth_vec{0, 0, thrust_vector_.linear_.z()};
             thrust_vector_.linear_ += current_rotation_ * depth_vec;
         }
     }
 
     // Apply rotation hold
     if (hold_idle_rotation_ && !currently_rotating_) {
-        Vector3f holdRotOutput = idle_rotation_controller_.Calculate(current_rotation_);
+        Eigen::Vector3f holdRotOutput = idle_rotation_controller_.Calculate(current_rotation_);
         if (std::fabs(thrust_vector_.angular_.x()) < ZERO_THRESHOLD) {
             thrust_vector_.angular_.x() = holdRotOutput.x();
         }
@@ -133,7 +133,7 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
 
     if (hold_idle_depth_ && !currently_depthing_) {
         const float depth_command = idle_depth_controller_.Calculate(current_depth);
-        const Vector3f depth_vec{0, 0, depth_command};
+        const Eigen::Vector3f depth_vec{0, 0, depth_command};
         thrust_vector_.linear_ += current_rotation_ * depth_vec;
     }
 
@@ -198,39 +198,39 @@ void Thrusters::SetThrustVector(const ThrustVector &thrust_vector) {
     currently_rotating_ = rotating_now;
 }
 
-void Thrusters::SetRotation(const Quaternionf &q) {
+void Thrusters::SetRotation(const Eigen::Quaternionf &q) {
     previous_rotation_recieved_time_ = rotation_recieved_time_ns_;
     rotation_recieved_time_ns_ = std::chrono::high_resolution_clock::now();
     current_rotation_ = q;
 }
 
-void Thrusters::SetDesiredRotation(const Quaternionf &q) {
+void Thrusters::SetDesiredRotation(const Eigen::Quaternionf &q) {
     desired_rotation_ = q;
     idle_rotation_controller_.SetSetpoint(q);
 }
 
-Vector3f Thrusters::CalculateAngVel(const Quaternionf &q1, const Quaternionf &q2, const float dt) {
+Eigen::Vector3f Thrusters::CalculateAngVel(const Eigen::Quaternionf &q1, const Eigen::Quaternionf &q2, const float dt) {
     // Calculate relative rotation (error)
     auto q_delta = q1.inverse() * q2;
     q_delta.normalize();
 
     // Convert to axis angle
-    AngleAxis<float> axisAngle(q_delta);
+    Eigen::AngleAxis<float> axisAngle(q_delta);
 
     // Calculate axis angle omega
-    Vector3f omega = axisAngle.angle() / dt * axisAngle.axis();
+    Eigen::Vector3f omega = axisAngle.angle() / dt * axisAngle.axis();
 
     return omega;
 }
 
-float Thrusters::CalculateInclination(const Quaternionf &rov_rot) {
-    const Vector3f reference_plane{0, 0, 1};
+float Thrusters::CalculateInclination(const Eigen::Quaternionf &rov_rot) {
+    const Eigen::Vector3f reference_plane{0, 0, 1};
     auto rov_plane = reference_plane * rov_rot;
     // Orbital inclination formula
     return std::acos(rov_plane[2] / rov_plane.norm());
 }
 
-float Thrusters::CalculateInclination(const Vector3f &plane) {
+float Thrusters::CalculateInclination(const Eigen::Vector3f &plane) {
     return std::acos(plane[2] / plane.norm());
 }
 
@@ -285,23 +285,23 @@ void Thrusters::PlotThrustVsPWM() {
 
 Thrusters::ThrusterOutputs Thrusters::ThrustVector::GetThrusterOutputs(const ThrusterDecomp &horizontal_decomp,
                                                                        const ThrusterDecomp &vertical_decomp) const {
-    const Vector3f horizontal_(linear_[0], linear_[1], angular_[2]);
-    const Vector3f vertical_(linear_[2], angular_[1], angular_[0]);
+    const Eigen::Vector3f horizontal_(linear_[0], linear_[1], angular_[2]);
+    const Eigen::Vector3f vertical_(linear_[2], angular_[1], angular_[0]);
 
     return {horizontal_decomp.solve(horizontal_), vertical_decomp.solve(vertical_)};
 }
 
-Thrusters::ThrusterOutputs::ThrusterOutputs(const Vector<float, 8> &outputs) {
-    for (Index i = 0; i < 4; i++) {
+Thrusters::ThrusterOutputs::ThrusterOutputs(const Eigen::Vector<float, 8> &outputs) {
+    for (Eigen::Index i = 0; i < 4; i++) {
         horizontal_[i] = outputs[i];
     }
-    for (Index i = 4; i < 8; i++) {
+    for (Eigen::Index i = 4; i < 8; i++) {
         vertical_[i - 4] = outputs[i];
     }
 }
 
-Thrusters::ThrusterOutputs::ThrusterOutputs(const Solve<ThrusterDecomp, Vector3f> &horizontal,
-                                            const Solve<ThrusterDecomp, Vector3f> &vertical) {
+Thrusters::ThrusterOutputs::ThrusterOutputs(const Eigen::Solve<ThrusterDecomp, Eigen::Vector3f> &horizontal,
+                                            const Eigen::Solve<ThrusterDecomp, Eigen::Vector3f> &vertical) {
     horizontal_ = horizontal;
     vertical_ = vertical;
 }

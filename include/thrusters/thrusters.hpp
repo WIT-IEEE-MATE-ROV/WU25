@@ -10,28 +10,27 @@
 
 #include "thrusters/thruster_data.hpp"
 
-using namespace Eigen;
 using namespace std::chrono_literals;
 
 class Thrusters {
 public:
     using PWMValue = uint16_t;
     using PCAOutputs = std::array<PWMValue, 8>;
-    using ThrusterDecomp = CompleteOrthogonalDecomposition<Matrix<float, 3, 4> >;
+    using ThrusterDecomp = Eigen::CompleteOrthogonalDecomposition<Eigen::Matrix<float, 3, 4> >;
 
     class ThrusterOutputs {
     public:
-        Vector4f horizontal_;
-        Vector4f vertical_;
+        Eigen::Vector4f horizontal_;
+        Eigen::Vector4f vertical_;
 
         ThrusterOutputs() = default;
 
-        explicit ThrusterOutputs(const Vector<float, 8> &outputs);
+        explicit ThrusterOutputs(const Eigen::Vector<float, 8> &outputs);
 
-        ThrusterOutputs(Vector4f horizontal, Vector4f vertical);
+        ThrusterOutputs(Eigen::Vector4f horizontal, Eigen::Vector4f vertical);
 
-        ThrusterOutputs(const Solve<ThrusterDecomp, Vector3f> &horizontal,
-                        const Solve<ThrusterDecomp, Vector3f> &vertical);
+        ThrusterOutputs(const Eigen::Solve<ThrusterDecomp, Eigen::Vector3f> &horizontal,
+                        const Eigen::Solve<ThrusterDecomp, Eigen::Vector3f> &vertical);
 
         ~ThrusterOutputs();
 
@@ -75,7 +74,7 @@ public:
 
         float operator[](size_t i) const;
 
-        float &operator()(const Index i) {
+        float &operator()(const Eigen::Index i) {
             return operator[](static_cast<size_t>(i));
         }
 
@@ -95,16 +94,16 @@ public:
     class ThrustVector {
     public:
         // XYZ
-        Vector<float, 3> linear_;
+        Eigen::Vector3f linear_;
         // RPY
-        Vector<float, 3> angular_;
+        Eigen::Vector3f angular_;
 
         ThrustVector() {
-            linear_ = Vector<float, 3>::Zero();
-            angular_ = Vector<float, 3>::Zero();
+            linear_ = Eigen::Vector3f::Zero();
+            angular_ = Eigen::Vector3f::Zero();
         }
 
-        explicit ThrustVector(const Vector<float, 6> &vec) {
+        explicit ThrustVector(const Eigen::Vector<float, 6> &vec) {
             for (int i = 0; i < 3; i++) {
                 linear_[i] = vec[i];
             }
@@ -113,7 +112,7 @@ public:
             }
         }
 
-        ThrustVector(const Vector<float, 3> &linear, const Vector<float, 3> &angular) {
+        ThrustVector(const Eigen::Vector3f &linear, const Eigen::Vector3f &angular) {
             linear_ = linear;
             angular_ = angular;
         }
@@ -121,7 +120,7 @@ public:
         [[nodiscard]] ThrusterOutputs GetThrusterOutputs(const ThrusterDecomp &horizontal_decomp,
                                                          const ThrusterDecomp &vertical_decomp) const;
 
-        float operator[](const Index i) {
+        float operator[](const Eigen::Index i) {
             assert(i < 6);
 
             if (i >= 3) {
@@ -131,7 +130,7 @@ public:
             return linear_[i];
         }
 
-        float operator[](const Index i) const {
+        float operator[](const Eigen::Index i) const {
             assert(i < 6);
 
             if (i >= 3) {
@@ -142,11 +141,11 @@ public:
         }
 
         float operator[](const int i) const {
-            return operator[](static_cast<Index>(i));
+            return operator[](static_cast<Eigen::Index>(i));
         }
 
         float operator[](const int i) {
-            return operator[](static_cast<Index>(i));
+            return operator[](static_cast<Eigen::Index>(i));
         }
     };
 
@@ -168,15 +167,15 @@ public:
 
     void SetThrustVector(const ThrustVector &thrust_vector);
 
-    void SetRotation(const Quaternionf &q);
+    void SetRotation(const Eigen::Quaternionf &q);
 
-    void SetDesiredRotation(const Quaternionf &q);
+    void SetDesiredRotation(const Eigen::Quaternionf &q);
 
-    static Vector3f CalculateAngVel(const Quaternionf &q1, const Quaternionf &q2, float dt);
+    static Eigen::Vector3f CalculateAngVel(const Eigen::Quaternionf &q1, const Eigen::Quaternionf &q2, float dt);
 
-    static float Thrusters::CalculateInclination(const Quaternionf& rot);
+    static float Thrusters::CalculateInclination(const Eigen::Quaternionf& rot);
 
-    static float Thrusters::CalculateInclination(const Vector3f& plane);
+    static float Thrusters::CalculateInclination(const Eigen::Vector3f& plane);
 
     [[nodiscard]] std::array<PWMValue, 8> GetPWMOutputs(const ThrusterOutputs &thruster_outputs) const;
 
@@ -222,9 +221,9 @@ private:
     ThrusterData thruster_data_;
     ThrustVector thrust_vector_;
 
-    Quaternionf current_rotation_{1, 0, 0, 0};
-    Quaternionf desired_rotation_{1, 0, 0, 0};
-    Quaternionf previous_rotation_{1, 0, 0, 0};
+    Eigen::Quaternionf current_rotation_{1, 0, 0, 0};
+    Eigen::Quaternionf desired_rotation_{1, 0, 0, 0};
+    Eigen::Quaternionf previous_rotation_{1, 0, 0, 0};
 
     ThrusterDecomp decomp_horizontal_;
     ThrusterDecomp decomp_vertical_;
