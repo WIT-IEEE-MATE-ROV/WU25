@@ -206,6 +206,7 @@ private:
 
     const float THRUSTER_ANGLE_RAD = 40.f * M_PI / 180.f;
 
+    const float MAX_THRUST_KGF = 2.4f;
     const float MAX_ANGVEL_X_RPS = 90 * M_PIf / 180.f;
     const float MAX_ANGVEL_Y_RPS = 90 * M_PIf / 180.f;
     const float MAX_ANGVEL_Z_RPS = 90 * M_PIf / 180.f;

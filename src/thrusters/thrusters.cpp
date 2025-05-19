@@ -110,8 +110,12 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
         Vector3f desired_direction{thrust_vector_.linear_.x(), thrust_vector_.linear_.y(), 0};
 
         thrust_vector_.linear_ += no_yaw * desired_direction;
-    }
 
+        if (!hold_idle_depth_) {
+            const Vector3f depth_vec{0, 0, thrust_vector_.linear_.z()};
+            thrust_vector_.linear_ += current_rotation_ * depth_vec;
+        }
+    }
 
     // Apply rotation hold
     if (hold_idle_rotation_ && !currently_rotating_) {
@@ -127,13 +131,14 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
         }
     }
 
-    if (hold_idle_depth_) {
+    if (hold_idle_depth_ && !currently_depthing_) {
         const float depth_command = idle_depth_controller_.Calculate(current_depth);
         const Vector3f depth_vec{0, 0, depth_command};
         thrust_vector_.linear_ += current_rotation_ * depth_vec;
     }
 
     ThrusterOutputs outputs = thrust_vector_.GetThrusterOutputs(decomp_horizontal_, decomp_vertical_);
+    outputs.Desaturate(MAX_THRUST_KGF);
     std::array<PWMValue, 8> pwms{};
 
     for (size_t i = 0; i < pwms.size(); i++) {
