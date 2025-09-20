@@ -12,7 +12,9 @@ namespace XBoxController {
         RIGHT_X = 3,
         RIGHT_Y = 4,
         LEFT_TRIGGER = 2,
-        RIGHT_TRIGGER = 5
+        RIGHT_TRIGGER = 5,
+        DPAD_UP_DOWN = 7,
+        DPAD_LEFT_RIGHT = 6
     };
 
     enum class Button:int {
@@ -20,13 +22,13 @@ namespace XBoxController {
         B = 1,
         X = 2,
         Y = 3,
-        BACK = 4,
-        GUIDE = 5,
-        START = 6,
-        LEFT_STICK = 7,
-        RIGHT_STICK = 8,
-        LEFT_SHOULDER = 9,
-        RIGHT_SHOULDER = 10,
+        BACK = 6,
+        GUIDE = 8,
+        START = 7,
+        LEFT_BUMPER = 4,
+        RIGHT_BUMPER = 5,
+        LEFT_STICK = 9,
+        RIGHT_STICK = 10,
 //        DPAD_UP = 11,
 //        DPAD_DOWN = 12,
 //        DPAD_LEFT = 13,

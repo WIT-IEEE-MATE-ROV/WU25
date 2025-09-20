@@ -78,7 +78,7 @@ public:
             return operator[](static_cast<size_t>(i));
         }
 
-        float operator()(const Index i) const {
+        float operator()(const Eigen::Index i) const {
             return operator[](static_cast<size_t>(i));
         }
 
@@ -173,9 +173,9 @@ public:
 
     static Eigen::Vector3f CalculateAngVel(const Eigen::Quaternionf &q1, const Eigen::Quaternionf &q2, float dt);
 
-    static float Thrusters::CalculateInclination(const Eigen::Quaternionf& rot);
+    static float CalculateInclination(const Eigen::Quaternionf& rot);
 
-    static float Thrusters::CalculateInclination(const Eigen::Vector3f& plane);
+    static float CalculateInclination(const Eigen::Vector3f& plane);
 
     [[nodiscard]] std::array<PWMValue, 8> GetPWMOutputs(const ThrusterOutputs &thruster_outputs) const;
 
@@ -210,8 +210,8 @@ private:
     const float MAX_ANGVEL_Y_RPS = 90 * M_PIf / 180.f;
     const float MAX_ANGVEL_Z_RPS = 90 * M_PIf / 180.f;
 
-    constexpr float ZERO_THRESHOLD = 0.0001f;
-    constexpr float DEPTH_COMMAND_THRESHOLD_DEG = 3.5f;
+    const float ZERO_THRESHOLD = 0.0001f;
+    const float DEPTH_COMMAND_THRESHOLD_DEG = 3.5f;
 
 
     //    const std::string DATA_PATH = "/home/foamstein/ros2_ws/src/WU25/data/T200-Public-Performance-Data.csv";

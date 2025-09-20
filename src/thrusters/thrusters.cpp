@@ -225,9 +225,10 @@ Eigen::Vector3f Thrusters::CalculateAngVel(const Eigen::Quaternionf &q1, const E
 
 float Thrusters::CalculateInclination(const Eigen::Quaternionf &rov_rot) {
     const Eigen::Vector3f reference_plane{0, 0, 1};
-    auto rov_plane = reference_plane * rov_rot;
+    // auto rov_plane = reference_plane * rov_rot; TODO: Fix
     // Orbital inclination formula
-    return std::acos(rov_plane[2] / rov_plane.norm());
+    // return std::acos(rov_plane[2] / rov_plane.norm());
+    return 0.0f;
 }
 
 float Thrusters::CalculateInclination(const Eigen::Vector3f &plane) {
