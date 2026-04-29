@@ -9,6 +9,7 @@
 #include <rclcpp/logging.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <sensor_msgs/msg/joy.hpp>
+#include <geometry_msgs/msg/quaternion_stamped.hpp>
 
 #include "thrusters/thrusters.hpp"
 #include "util/controller_map.hpp"
@@ -26,6 +27,10 @@ public:
         joy_sub_ =
                 this->create_subscription<sensor_msgs::msg::Joy>(
                         "joy", 3, std::bind(&ThrusterNode::JoyCallback, this, std::placeholders::_1));
+
+        // Subscribe to IMU quaternion topic and forward to thrusters
+        quat_sub_ = this->create_subscription<geometry_msgs::msg::QuaternionStamped>(
+            "bno/quat", 10, std::bind(&ThrusterNode::QuatCallback, this, std::placeholders::_1));
 
         thrusters_ = std::make_unique<Thrusters>();
         thrusters_->Init();
@@ -54,6 +59,15 @@ public:
 //                AngleAxisf(90.f * M_PIf / 180.f, Vector3f::UnitZ());
 //
 //        thrusters_->SetDesiredRotation(desired);
+    }
+
+    void QuatCallback(const geometry_msgs::msg::QuaternionStamped::UniquePtr &msg) {
+        const auto &q = msg->quaternion;
+        Eigen::Quaternionf qf(static_cast<float>(q.w), static_cast<float>(q.x), static_cast<float>(q.y), static_cast<float>(q.z));
+        last_quat_ = qf;
+        if (thrusters_) {
+            thrusters_->SetRotation(qf);
+        }
     }
 
     uint16_t negatePeriod(uint16_t period) {
@@ -145,6 +159,7 @@ public:
 
         int32_t right_bumper = msg->buttons[std::to_underlying(Button::RIGHT_SHOULDER)];
         int32_t left_bumper = msg->buttons[std::to_underlying(Button::LEFT_SHOULDER)];
+        int32_t y_button = msg->buttons[std::to_underlying(Button::Y)]; // button setting for hold rotation 保持旋转用的按钮
 
 //        int32_t
 
@@ -161,11 +176,28 @@ public:
         thrusters_->SetThrustVector({
                                             {x_translation * 3.f, y_translation * 3.f,     z_translation * 4.5f},
                                             {0,             -y_rotation, z_rotation}});
+        // Toggle hold-idle-rotation on Y button rising edge
+        if (y_button && !prev_y_button_) {
+            // flip local toggle
+            hold_idle_rotation_enabled_ = !hold_idle_rotation_enabled_;
+            thrusters_->SetHoldIdleRotation(hold_idle_rotation_enabled_);
+            if (hold_idle_rotation_enabled_) {
+                if (last_quat_.coeffs().norm() != 0.0f) {
+                    thrusters_->SetDesiredRotation(last_quat_);
+                }
+                RCLCPP_INFO(log_, "Y pressed: enabled hold idle rotation (desired set)");
+            } else {
+                RCLCPP_INFO(log_, "Y pressed: disabled hold idle rotation");
+            }
+        }
+
         if (right_bumper) {
             pca_->set_period(8, 1700);
         } else if (left_bumper) {
             pca_->set_period(8, 1300);
         }
+
+        prev_y_button_ = y_button;
     }
 
     template<typename T>
@@ -203,11 +235,15 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::QuaternionStamped>::SharedPtr quat_sub_;
     const rclcpp::Logger log_;
     std::unique_ptr<Thrusters> thrusters_;
     std::unique_ptr<PCA9685> pca_;
     size_t count_{};
     Thrusters::ThrustVector joy_tvec_;
+    Eigen::Quaternionf last_quat_{1, 0, 0, 0};
+    int prev_y_button_{0};
+    bool hold_idle_rotation_enabled_{false};
 };
 
 int main(const int argc, char *argv[]) {

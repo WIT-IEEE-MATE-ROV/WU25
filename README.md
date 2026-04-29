@@ -19,6 +19,22 @@
 ## Build
 1. `cd [YOUR WORKSPACE]` (Don't build inside the package)
 2. `colcon build`
+
+## Launch / Run
+After building and sourcing the workspace, you can run nodes individually or use the provided launch file to start both IMU and thruster nodes.
+
+Run nodes individually:
+```bash
+source install/local_setup.bash
+ros2 run wu25 bno_node
+ros2 run wu25 thrusters
+```
+
+Run both nodes with the packaged launch file (this launch uses a `sudo -E` prefix to preserve environment variables when running nodes that require root access):
+```bash
+source install/local_setup.bash
+ros2 launch wu25 start_nodes.launch.py
+```
 ## Enabling `spidev` (Orange Pi 5)
 1. Copy device tree blob file from firmware files 
 
