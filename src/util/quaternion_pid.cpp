@@ -17,6 +17,23 @@ void QuatPIDController::SetSetpoint(const Eigen::Quaternionf &setpoint) {
     setpoint_ = setpoint;
 }
 
+void QuatPIDController::SetParams(float p, float i, float d, float i_zone, float i_max_accum, float max_output) {
+    PIDParams params;
+    params.p = p;
+    params.i = i;
+    params.d = d;
+    params.i_zone = i_zone;
+    params.i_max_accum = i_max_accum;
+    params.max_output = max_output;
+    params.i_accum = 0.0f;
+    x_params_ = params;
+    y_params_ = params;
+    z_params_ = params;
+    prev_x_error_ = 0.0f;
+    prev_y_error_ = 0.0f;
+    prev_z_error_ = 0.0f;
+}
+
 Eigen::Vector3f QuatPIDController::Calculate(const Eigen::Quaternionf &current_rotation) {
     current_ = current_rotation;
     // Compute error quaternion: rotation from current -> setpoint

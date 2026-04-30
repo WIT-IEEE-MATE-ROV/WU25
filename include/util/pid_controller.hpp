@@ -14,6 +14,8 @@ public:
 
     void SetSetpoint(float setpoint);
 
+    void SetGains(float kP, float kI, float kD, float kFF = 0.0f);
+
     float Calculate(float current_state);
 
 private:

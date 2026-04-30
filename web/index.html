@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ROV Control</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <span>ROV Control</span>
+    <span id="conn-status" class="badge disconnected">● Disconnected</span>
+  </header>
+
+  <main>
+    <!-- Left column: camera + IMU -->
+    <section id="col-left">
+      <div id="camera-placeholder">Camera stream placeholder</div>
+      <div id="imu-panel">
+        <h3>IMU Orientation</h3>
+        <div class="imu-row"><span class="imu-label">Roll</span><span id="imu-roll" class="imu-val">--</span><span class="imu-unit">°</span></div>
+        <div class="imu-row"><span class="imu-label">Pitch</span><span id="imu-pitch" class="imu-val">--</span><span class="imu-unit">°</span></div>
+        <div class="imu-row"><span class="imu-label">Yaw</span><span id="imu-yaw" class="imu-val">--</span><span class="imu-unit">°</span></div>
+      </div>
+    </section>
+
+    <!-- Center column: thruster bars -->
+    <section id="col-center">
+      <h3>Thruster Forces</h3>
+      <div id="thruster-bars"></div>
+    </section>
+
+    <!-- Right column: controls, modes, PID -->
+    <section id="col-right">
+
+      <div id="mode-panel">
+        <h3>Control Modes</h3>
+        <div class="mode-row" id="mode-rot">
+          <span class="led" id="led-rot"></span>Hold Rotation
+        </div>
+        <div class="mode-row" id="mode-depth">
+          <span class="led" id="led-depth"></span>Hold Depth
+        </div>
+        <div class="mode-row" id="mode-angvel">
+          <span class="led" id="led-angvel"></span>Ang Vel Control
+        </div>
+        <div class="mode-row" id="mode-deplock">
+          <span class="led" id="led-deplock"></span>Depth Lock
+        </div>
+      </div>
+
+      <div id="pid-panel">
+        <h3>Rotation PID Tuning</h3>
+        <div class="slider-row">
+          <label>Kp</label>
+          <input type="range" id="rot-kp" min="0" max="5" step="0.05" value="1.0">
+          <span class="slider-val" id="rot-kp-val">1.00</span>
+        </div>
+        <div class="slider-row">
+          <label>Ki</label>
+          <input type="range" id="rot-ki" min="0" max="2" step="0.01" value="0.0">
+          <span class="slider-val" id="rot-ki-val">0.00</span>
+        </div>
+        <div class="slider-row">
+          <label>Kd</label>
+          <input type="range" id="rot-kd" min="0" max="2" step="0.05" value="0.0">
+          <span class="slider-val" id="rot-kd-val">0.00</span>
+        </div>
+        <div class="slider-row">
+          <label>Max Out</label>
+          <input type="range" id="rot-max" min="0.1" max="5" step="0.1" value="2.4">
+          <span class="slider-val" id="rot-max-val">2.40</span>
+        </div>
+        <button id="apply-rot-pid" class="btn-primary">Apply Rotation PID</button>
+
+        <h3 style="margin-top:14px">Depth PID Tuning</h3>
+        <div class="slider-row">
+          <label>Kp</label>
+          <input type="range" id="depth-kp" min="0" max="5" step="0.05" value="0.0">
+          <span class="slider-val" id="depth-kp-val">0.00</span>
+        </div>
+        <div class="slider-row">
+          <label>Ki</label>
+          <input type="range" id="depth-ki" min="0" max="2" step="0.01" value="0.0">
+          <span class="slider-val" id="depth-ki-val">0.00</span>
+        </div>
+        <div class="slider-row">
+          <label>Kd</label>
+          <input type="range" id="depth-kd" min="0" max="2" step="0.05" value="0.0">
+          <span class="slider-val" id="depth-kd-val">0.00</span>
+        </div>
+        <button id="apply-depth-pid" class="btn-primary">Apply Depth PID</button>
+        <div id="pid-status" class="status-msg"></div>
+      </div>
+
+      <div id="node-controls">
+        <h3>Node Control</h3>
+        <div class="btn-row">
+          <button id="start-rovs" class="btn-green">Start OrangePi</button>
+          <button id="stop-rovs" class="btn-red">Stop OrangePi</button>
+        </div>
+        <div class="btn-row">
+          <button id="start-joy" class="btn-green">Start Joy</button>
+          <button id="stop-joy" class="btn-red">Stop Joy</button>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

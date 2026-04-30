@@ -38,6 +38,36 @@ ros2 launch wu25 start_nodes.launch.py
 
 Note: the `start_nodes.launch.py` file uses a `sudo -E env ... bash -c` prefix so nodes that require hardware access (GPIO/SPI/I2C) can run with elevated privileges while preserving the environment variables needed by ROS.
 
+Systemd service for control server
+---------------------------------
+To run the control server on boot on the Orange Pi, create a systemd unit file `/etc/systemd/system/rov-control.service` with contents similar to:
+
+```ini
+[Unit]
+Description=ROV Control Server
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/ros2_ws/src/WU25
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/pi/ros2_ws/src/WU25/.venv/bin/python3 tools/rov_control_server.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start with:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable rov-control.service
+sudo systemctl start rov-control.service
+sudo journalctl -u rov-control.service -f
+```
+
+
 There are no automated tests beyond `ament_lint`. To run lint checks:
 
 ```bash

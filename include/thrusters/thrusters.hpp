@@ -171,6 +171,12 @@ public:
 
     void SetDesiredRotation(const Eigen::Quaternionf &q);
 
+    void SetRotationPIDGains(float p, float i, float d,
+                             float i_zone = std::numeric_limits<float>::max(),
+                             float max_output = std::numeric_limits<float>::max());
+
+    void SetDepthPIDGains(float kp, float ki, float kd);
+
     static Eigen::Vector3f CalculateAngVel(const Eigen::Quaternionf &q1, const Eigen::Quaternionf &q2, float dt);
 
     static float Thrusters::CalculateInclination(const Eigen::Quaternionf& rot);
@@ -228,9 +234,9 @@ private:
     ThrusterDecomp decomp_horizontal_;
     ThrusterDecomp decomp_vertical_;
 
-    QuatPIDController::PIDParams x_params_;
-    QuatPIDController::PIDParams y_params_;
-    QuatPIDController::PIDParams z_params_;
+    QuatPIDController::PIDParams x_params_{.p = 1.0f};
+    QuatPIDController::PIDParams y_params_{.p = 1.0f};
+    QuatPIDController::PIDParams z_params_{.p = 1.0f};
     QuatPIDController idle_rotation_controller_;
 
     PIDController x_omega_controller_{0, 0, 0};
@@ -238,8 +244,8 @@ private:
     PIDController z_omega_controller_{0, 0, 0};
     PIDController idle_depth_controller_{0, 0, 0};
 
-    std::chrono::system_clock::time_point rotation_recieved_time_ns_;
-    std::chrono::system_clock::time_point previous_rotation_recieved_time_;
+    std::chrono::high_resolution_clock::time_point rotation_recieved_time_ns_;
+    std::chrono::high_resolution_clock::time_point previous_rotation_recieved_time_;
 
     std::array<float, 8> pwm_outputs_{};
 

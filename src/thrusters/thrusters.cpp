@@ -13,6 +13,10 @@
 
 
 Thrusters::Thrusters(): thruster_data_(DATA_PATH), idle_rotation_controller_(x_params_, y_params_, z_params_) {
+    const auto now = std::chrono::high_resolution_clock::now();
+    rotation_recieved_time_ns_ = now;
+    previous_rotation_recieved_time_ = now;
+
     Eigen::Vector4f horizontal_angles(
         THRUSTER_ANGLE_RAD, -THRUSTER_ANGLE_RAD, 2.f * M_PIf - THRUSTER_ANGLE_RAD, -(2.f * M_PIf - THRUSTER_ANGLE_RAD)
     );
@@ -48,10 +52,8 @@ Thrusters::Thrusters(): thruster_data_(DATA_PATH), idle_rotation_controller_(x_p
     decomp_horizontal_ = ThrusterDecomp(thruster_config_horizontal);
     decomp_vertical_ = ThrusterDecomp(thruster_config_vertical);
 
-    x_params_ = {.p = 1};
-    y_params_ = {.p = 1};
-    z_params_ = {.p = 1};
-    // rotation_controller_ = {x_params_, y_params_, z_params_};
+    // x_params_, y_params_, z_params_ are now initialized in the header (.p = 1.0f);
+    // nothing to do here
 
     // X, Y, Yaw
     const Eigen::Vector3f horizontal_vector(1, 0, 0);
@@ -83,11 +85,11 @@ Thrusters::ThrusterOutputs Thrusters::Update() {
         y_omega_controller_.SetSetpoint(thrust_vector_.angular_.y());
         z_omega_controller_.SetSetpoint(thrust_vector_.angular_.z());
 
-        auto dt = std::chrono::duration_cast<std::chrono::milliseconds>
-                (rotation_recieved_time_ns_ - previous_rotation_recieved_time_).count();
+        const float dt_s = std::chrono::duration<float>(
+                rotation_recieved_time_ns_ - previous_rotation_recieved_time_).count();
 
         // Calculate current angular velocity
-        Eigen::Vector3f angVel = CalculateAngVel(previous_rotation_, current_rotation_, static_cast<float>(dt));
+        Eigen::Vector3f angVel = CalculateAngVel(previous_rotation_, current_rotation_, dt_s);
 
         // Set angular thrust vector to pid calculated kgf.
         thrust_vector_.angular_ = {
@@ -201,12 +203,21 @@ void Thrusters::SetThrustVector(const ThrustVector &thrust_vector) {
 void Thrusters::SetRotation(const Eigen::Quaternionf &q) {
     previous_rotation_recieved_time_ = rotation_recieved_time_ns_;
     rotation_recieved_time_ns_ = std::chrono::high_resolution_clock::now();
+    previous_rotation_ = current_rotation_;
     current_rotation_ = q;
 }
 
 void Thrusters::SetDesiredRotation(const Eigen::Quaternionf &q) {
     desired_rotation_ = q;
     idle_rotation_controller_.SetSetpoint(q);
+}
+
+void Thrusters::SetRotationPIDGains(float p, float i, float d, float i_zone, float max_output) {
+    idle_rotation_controller_.SetParams(p, i, d, i_zone, max_output * 2.0f, max_output);
+}
+
+void Thrusters::SetDepthPIDGains(float kp, float ki, float kd) {
+    idle_depth_controller_.SetGains(kp, ki, kd);
 }
 
 Eigen::Vector3f Thrusters::CalculateAngVel(const Eigen::Quaternionf &q1, const Eigen::Quaternionf &q2, const float dt) {
@@ -309,16 +320,16 @@ Thrusters::ThrusterOutputs::ThrusterOutputs(const Eigen::Solve<ThrusterDecomp, E
 Thrusters::ThrusterOutputs::~ThrusterOutputs() = default;
 
 void Thrusters::ThrusterOutputs::Desaturate(const float max_thrust_kgf) {
-    float real_max_thrust_kgf;
+    float real_max_thrust_kgf = 0.0f;
     for (float value: horizontal_) {
-        real_max_thrust_kgf = std::max(real_max_thrust_kgf, value);
+        real_max_thrust_kgf = std::max(real_max_thrust_kgf, std::abs(value));
     }
     for (float value: vertical_) {
-        real_max_thrust_kgf = std::max(real_max_thrust_kgf, value);
+        real_max_thrust_kgf = std::max(real_max_thrust_kgf, std::abs(value));
     }
 
-    const float ratio = real_max_thrust_kgf * max_thrust_kgf;
     if (real_max_thrust_kgf > max_thrust_kgf) {
+        const float ratio = real_max_thrust_kgf / max_thrust_kgf;
         for (float &value: horizontal_) {
             value /= ratio;
         }

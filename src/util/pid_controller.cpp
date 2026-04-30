@@ -14,6 +14,15 @@ void PIDController::SetSetpoint(const float setpoint) {
     setpoint_ = setpoint;
 }
 
+void PIDController::SetGains(const float kP, const float kI, const float kD, const float kFF) {
+    kP_ = kP;
+    kI_ = kI;
+    kD_ = kD;
+    kFF_ = kFF;
+    i_accum_ = 0.0f;
+    prev_error_ = 0.0f;
+}
+
 float PIDController::Calculate(const float current_state) {
     const auto now = std::chrono::system_clock::now();
     const std::chrono::duration<float> dt_duration = now - prev_time_ms_;
