@@ -19,6 +19,54 @@
 ## Build
 1. `cd [YOUR WORKSPACE]` (Don't build inside the package)
 2. `colcon build`
+
+## Launch / Run
+After building and sourcing the workspace, you can run nodes individually or use the provided launch file to start both IMU and thruster nodes.
+
+Run nodes individually:
+```bash
+source install/local_setup.bash
+ros2 run wu25 bno_node
+ros2 run wu25 thrusters
+```
+
+Run both nodes with the packaged launch file (this launch uses a `sudo -E` prefix to preserve environment variables when running nodes that require root access):
+```bash
+source install/local_setup.bash
+ros2 launch wu25 start_nodes.launch.py
+```
+
+Systemd (run server on boot)
+--------------------------------
+You can register the control server (the FastAPI app in `tools/rov_control_server.py`) as a systemd service on the Orange Pi so it starts on boot.
+
+Create `/etc/systemd/system/rov-control.service` with the following contents (adjust paths and user):
+
+```ini
+[Unit]
+Description=ROV Control Server
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/ros2_ws/src/WU25
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/pi/ros2_ws/src/WU25/.venv/bin/python3 tools/rov_control_server.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable rov-control.service
+sudo systemctl start rov-control.service
+sudo journalctl -u rov-control.service -f
+```
+
 ## Enabling `spidev` (Orange Pi 5)
 1. Copy device tree blob file from firmware files 
 

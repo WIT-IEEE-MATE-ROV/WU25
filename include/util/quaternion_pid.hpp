@@ -29,6 +29,11 @@ public:
 
     void SetSetpoint(const Eigen::Quaternionf &setpoint);
 
+    void SetParams(float p, float i, float d,
+                   float i_zone = std::numeric_limits<float>::max(),
+                   float i_max_accum = std::numeric_limits<float>::max(),
+                   float max_output = std::numeric_limits<float>::max());
+
     Eigen::Vector3f Calculate(const Eigen::Quaternionf &current_rotation);
 
     Eigen::Quaternionf GetError() const;

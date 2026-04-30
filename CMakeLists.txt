@@ -84,7 +84,7 @@ target_include_directories(bno_node
         $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(bno_node rclcpp std_msgs sensor_msgs geometry_msgs)
-ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs ament_index_cpp)
+ament_target_dependencies(thrusters rclcpp std_msgs sensor_msgs geometry_msgs ament_index_cpp)
 
 install(TARGETS
         sh2lib
